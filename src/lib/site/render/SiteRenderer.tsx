@@ -319,6 +319,12 @@ export function SiteRenderer({ cfg, opts }: { cfg: SiteConfig; opts: RenderOptio
           <ul className="pf-nav__links">
             {cfg.navigation.map((n) => <li key={n.target}><a href={n.target}>{n.label}</a></li>)}
           </ul>
+          {cfg.navigation.length ? (
+            <details className="pf-nav__mobile">
+              <summary aria-label="Menu">Menu</summary>
+              <ul>{cfg.navigation.map((n) => <li key={n.target}><a href={n.target}>{n.label}</a></li>)}</ul>
+            </details>
+          ) : null}
         </div>
       </nav>
       <main id="top">

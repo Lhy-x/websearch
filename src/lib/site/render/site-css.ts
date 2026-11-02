@@ -17,6 +17,11 @@ body{margin:0}
 .pf-nav__links{display:flex;gap:22px;list-style:none;margin:0;padding:0;font-size:15px}
 .pf-nav__links a{text-decoration:none;opacity:.8}
 .pf-nav__links a:hover{opacity:1;color:var(--c-primary)}
+.pf-nav__mobile{display:none;position:relative}
+.pf-nav__mobile summary{list-style:none;cursor:pointer;font-size:14px;font-weight:600;padding:8px 12px;border:1px solid color-mix(in srgb,var(--c-text) 20%,transparent);border-radius:var(--radius)}
+.pf-nav__mobile summary::-webkit-details-marker{display:none}
+.pf-nav__mobile ul{position:absolute;right:0;top:calc(100% + 8px);list-style:none;margin:0;padding:8px;min-width:200px;background:var(--c-bg);border:1px solid color-mix(in srgb,var(--c-text) 12%,transparent);border-radius:var(--radius);box-shadow:0 20px 40px -20px rgba(0,0,0,.35)}
+.pf-nav__mobile li a{display:block;padding:10px 12px;text-decoration:none}
 .pf-h1,.pf-h2,.pf-h3{font-family:var(--f-head);text-transform:var(--head-case);line-height:1.12;margin:0 0 .5em;font-weight:700;letter-spacing:-.01em}
 .pf-h1{font-size:clamp(38px,6vw,68px)}
 .pf-h1--xl{font-size:clamp(46px,9vw,118px);letter-spacing:-.03em;line-height:.98}
@@ -169,6 +174,7 @@ body{margin:0}
 /* ---------- responsive ---------- */
 @media (max-width:860px){
   .pf-nav__links{display:none}
+  .pf-nav__mobile{display:block}
   .pf-hero__grid,.pf-contact{grid-template-columns:1fr;gap:36px}
   .pf-hero__art{max-width:300px;justify-self:start}
   .pf-layout--salon .pf-services{grid-template-columns:1fr}

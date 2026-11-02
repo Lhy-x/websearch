@@ -7,6 +7,8 @@ import { adminRoute } from '@/server/http/route'
 import { sendTestEmail } from '@/server/email/test-send'
 import { suppress } from '@/server/email/suppression'
 import { checkDmarc } from '@/server/email/dns-check'
+import { cliStatus } from '@/server/ai/cli'
+import { aiAvailability, generateStructured } from '@/server/ai/client'
 
 export const GET = adminRoute(async () => ({ settings: await getSettings(), secrets: await secretStatus() }))
 
@@ -26,6 +28,8 @@ const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('unsuppress'), id: z.string().uuid() }),
   z.object({ action: z.literal('test_email'), to: z.string().email(), subject: z.string().min(1).max(200), body: z.string().min(1).max(5000) }),
   z.object({ action: z.literal('dns_check'), domain: z.string().min(3).max(253) }),
+  z.object({ action: z.literal('ai_status') }),
+  z.object({ action: z.literal('ai_test') }),
 ])
 
 export const POST = adminRoute(async ({ body, admin }) => {
@@ -62,5 +66,14 @@ export const POST = adminRoute(async ({ body, admin }) => {
       return sendTestEmail(body)
     case 'dns_check':
       return checkDmarc(body.domain)
+    case 'ai_status': {
+      const [claude, codex] = await Promise.all([cliStatus('claude-code', true), cliStatus('codex', true)])
+      return { claude, codex, current: await aiAvailability() }
+    }
+    case 'ai_test': {
+      const t = Date.now()
+      const r = await generateStructured({ task: 'assistant', system: 'Réponds uniquement avec le JSON demandé.', instructions: 'Test de connexion : renvoie ok=true et le nom de ton modèle.', schema: z.object({ ok: z.boolean(), modele: z.string() }) })
+      return { ok: r.data.ok, model: r.model, provider: r.provider, ms: Date.now() - t, costUsd: r.costUsd }
+    }
   }
 }, schema)

@@ -62,16 +62,25 @@ export function SettingsClient({ settings, secrets, infra, offers, strategies, s
 
       <TabsContent value="ai" className="space-y-4">
         <Card><CardBody className="grid gap-4 md:grid-cols-3">
-          <Field label="Fournisseur"><Select value={s.ai.provider} onChange={(e) => patch('ai', { provider: e.target.value as Settings['ai']['provider'] })}><option value="none">Aucun (génération déterministe)</option><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="openrouter">OpenRouter</option></Select></Field>
+          <Field label="Fournisseur" hint="Abonnement = vos crédits Claude Pro/Max ou ChatGPT, via le CLI officiel connecté sur la machine du worker. Aucune clé API."><Select value={s.ai.provider} onChange={(e) => patch('ai', { provider: e.target.value as Settings['ai']['provider'] })}>
+            <option value="none">Aucun (génération déterministe)</option>
+            <optgroup label="Abonnement (sans clé API)"><option value="claude-code">Claude — abonnement Pro/Max (CLI claude)</option><option value="codex">ChatGPT — abonnement (CLI codex)</option></optgroup>
+            <optgroup label="Clé API (facturation à l’usage)"><option value="anthropic">Anthropic API</option><option value="openai">OpenAI API</option><option value="openrouter">OpenRouter</option></optgroup>
+          </Select></Field>
           <Field label="Mode de coût" hint="LOW_COST : aucun appel IA pour les sites et emails. BALANCED : modèle fort pour la génération, économique pour la classification. HIGH_QUALITY : modèle fort partout."><Select value={s.ai.costMode} onChange={(e) => patch('ai', { costMode: e.target.value as Settings['ai']['costMode'] })}><option>LOW_COST</option><option>BALANCED</option><option>HIGH_QUALITY</option></Select></Field>
-          <Field label="Budget IA journalier ($)" hint="Les appels sont refusés au-delà (vérification avant chaque appel)."><Input type="number" min={0} step={0.5} value={s.ai.dailyBudgetUsd} onChange={(e) => patch('ai', { dailyBudgetUsd: Number(e.target.value) })} /></Field>
-          <Field label="Modèle économique" hint={s.ai.provider === 'anthropic' ? 'Défaut : claude-haiku-5-5' : 'Requis pour OpenAI / OpenRouter'}><Input value={s.ai.cheapModel} onChange={(e) => patch('ai', { cheapModel: e.target.value })} placeholder={s.ai.provider === 'anthropic' ? 'claude-haiku-5-5' : ''} /></Field>
-          <Field label="Modèle performant" hint={s.ai.provider === 'anthropic' ? 'Défaut : claude-opus-5-5' : 'Requis pour OpenAI / OpenRouter'}><Input value={s.ai.strongModel} onChange={(e) => patch('ai', { strongModel: e.target.value })} placeholder={s.ai.provider === 'anthropic' ? 'claude-opus-5-5' : ''} /></Field>
+          {s.ai.provider === 'claude-code' || s.ai.provider === 'codex' ? (
+            <Field label="Appels IA max / jour (abonnement)" hint="Protège les limites de votre abonnement. Un site sur mesure = 1 à 3 appels."><Input type="number" min={1} max={2000} value={s.ai.subscriptionDailyCalls} onChange={(e) => patch('ai', { subscriptionDailyCalls: Number(e.target.value) })} /></Field>
+          ) : (
+            <Field label="Budget IA journalier ($)" hint="Les appels sont refusés au-delà (vérification avant chaque appel)."><Input type="number" min={0} step={0.5} value={s.ai.dailyBudgetUsd} onChange={(e) => patch('ai', { dailyBudgetUsd: Number(e.target.value) })} /></Field>
+          )}
+          <Field label="Modèle économique" hint={{ anthropic: 'Défaut : claude-haiku-5-5', 'claude-code': 'Défaut : haiku (alias du CLI)', codex: 'Vide = modèle par défaut de Codex' }[s.ai.provider as string] ?? 'Requis pour OpenAI / OpenRouter'}><Input value={s.ai.cheapModel} onChange={(e) => patch('ai', { cheapModel: e.target.value })} placeholder={{ anthropic: 'claude-haiku-5-5', 'claude-code': 'haiku' }[s.ai.provider as string] ?? ''} /></Field>
+          <Field label="Modèle performant (sites sur mesure)" hint={{ anthropic: 'Défaut : claude-opus-5-5', 'claude-code': 'Défaut : opus (le meilleur modèle de votre forfait)', codex: 'Vide = modèle par défaut de Codex' }[s.ai.provider as string] ?? 'Requis pour OpenAI / OpenRouter'}><Input value={s.ai.strongModel} onChange={(e) => patch('ai', { strongModel: e.target.value })} placeholder={{ anthropic: 'claude-opus-5-5', 'claude-code': 'opus' }[s.ai.provider as string] ?? ''} /></Field>
           <Field label="Température" hint="OpenAI / OpenRouter uniquement (non utilisée par l’API Anthropic récente)"><Input type="number" min={0} max={1.5} step={0.1} value={s.ai.temperature} onChange={(e) => patch('ai', { temperature: Number(e.target.value) })} /></Field>
           <Field label="Consignes personnalisées pour la génération de sites" className="md:col-span-3"><Textarea rows={3} maxLength={4000} value={s.ai.customSiteInstructions} onChange={(e) => patch('ai', { customSiteInstructions: e.target.value })} /></Field>
         </CardBody></Card>
-        <Notice tone={infra.ai.available ? 'success' : 'warning'} title={infra.ai.available ? `IA opérationnelle (${infra.ai.provider})` : 'IA non configurée'}>{infra.ai.available ? 'La clé est présente. Le budget journalier s’applique.' : infra.ai.reason}</Notice>
+        <Notice tone={infra.ai.available ? 'success' : 'warning'} title={infra.ai.available ? `IA opérationnelle (${infra.ai.provider})` : 'IA non configurée'}>{infra.ai.available ? (s.ai.provider === 'claude-code' || s.ai.provider === 'codex' ? 'Connecté via votre abonnement. Le plafond d’appels journalier s’applique.' : 'La clé est présente. Le budget journalier s’applique.') : infra.ai.reason}</Notice>
         <SaveBar />
+        <AiConnection onCheck={() => post({ action: 'ai_status' })} onTest={() => post({ action: 'ai_test' })} />
       </TabsContent>
 
       <TabsContent value="search" className="space-y-4">
@@ -115,6 +124,8 @@ export function SettingsClient({ settings, secrets, infra, offers, strategies, s
         <Card><CardBody className="grid gap-4 md:grid-cols-3">
           <Field label="Style par défaut"><Select value={s.sites.defaultStyle} onChange={(e) => patch('sites', { defaultStyle: e.target.value as Settings['sites']['defaultStyle'] })}>{STYLES.map((x) => <option key={x}>{x}</option>)}</Select></Field>
           <Field label="Langue"><Select value={s.sites.language} onChange={(e) => patch('sites', { language: e.target.value as 'fr' })}><option value="fr">Français</option><option value="en">English</option><option value="de">Deutsch</option><option value="nl">Nederlands</option></Select></Field>
+          <Field label="Génération par défaut" hint="Sur mesure = site unique écrit par l’IA (nécessite une IA). Template = structures prédéfinies."><Select value={s.sites.generationMode} onChange={(e) => patch('sites', { generationMode: e.target.value as Settings['sites']['generationMode'] })}><option value="bespoke">Sur mesure (qualité maximale)</option><option value="template">Templates</option></Select></Field>
+          <Field label="Passes de correction automatique" hint="Après génération : contrôle des faits + rendu mesuré, puis correction par l’IA (0 à 3)."><Input type="number" min={0} max={3} value={s.sites.qualityPasses} onChange={(e) => patch('sites', { qualityPasses: Number(e.target.value) })} /></Field>
           <Field label="Durée de conservation des démos (jours)"><Input type="number" min={1} max={365} value={s.sites.previewTtlDays} onChange={(e) => patch('sites', { previewTtlDays: Number(e.target.value) })} /></Field>
           <Field label="Domaine de démonstration" hint="URL publique servant /preview (sinon APP_BASE_URL)" className="md:col-span-3"><Input value={s.sites.previewBaseUrl} onChange={(e) => patch('sites', { previewBaseUrl: e.target.value })} placeholder="https://demo.mon-domaine.fr" /></Field>
           <Field label="Mention de démonstration (pied de page des sites)" className="md:col-span-3"><Textarea rows={2} maxLength={300} value={s.sites.demoDisclaimer} onChange={(e) => patch('sites', { demoDisclaimer: e.target.value })} /></Field>
@@ -250,6 +261,30 @@ function DnsCheck({ onCheck, defaultDomain }: { onCheck: (d: string) => Promise<
           <Input name="d" defaultValue={defaultDomain} placeholder="mon-domaine.fr" required /><Button type="submit" variant="outline">Vérifier</Button>
         </form>
         {res ? <pre className="mt-3 overflow-x-auto rounded-lg bg-panel-2 p-3 text-xs">{JSON.stringify(res, null, 2)}</pre> : null}
+      </CardBody>
+    </Card>
+  )
+}
+
+function AiConnection({ onCheck, onTest }: { onCheck: () => Promise<Record<string, unknown> | undefined>; onTest: () => Promise<Record<string, unknown> | undefined> }) {
+  const [status, setStatus] = useState<Record<string, unknown> | null>(null)
+  const [test, setTest] = useState<Record<string, unknown> | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const st = (k: string) => status?.[k] as { installed: boolean; loggedIn: boolean | null; detail: string } | undefined
+  return (
+    <Card>
+      <CardHeader title="Connexion par abonnement" description="Le worker appelle le CLI officiel connecté à votre compte. Installez-le et connectez-vous une fois sur la machine du worker (voir le tutoriel)." />
+      <CardBody className="space-y-3 text-sm">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" loading={busy === 'c'} onClick={async () => { setBusy('c'); setStatus((await onCheck()) ?? null); setBusy(null) }}>Vérifier claude / codex</Button>
+          <Button variant="outline" size="sm" loading={busy === 't'} onClick={async () => { setBusy('t'); setTest((await onTest()) ?? null); setBusy(null) }}>Tester un appel (fournisseur actuel)</Button>
+        </div>
+        {status ? (
+          <div className="space-y-1">
+            {(['claude', 'codex'] as const).map((k) => <Status key={k} ok={!!st(k)?.loggedIn} warn={st(k)?.installed === false} label={`${k === 'claude' ? 'Claude (Pro/Max)' : 'Codex (ChatGPT)'} — ${st(k)?.installed === false ? 'non installé' : st(k)?.detail}`} />)}
+          </div>
+        ) : null}
+        {test ? <pre className="overflow-x-auto rounded-lg bg-panel-2 p-3 text-xs">{JSON.stringify(test, null, 2)}</pre> : null}
       </CardBody>
     </Card>
   )

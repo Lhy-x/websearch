@@ -7,6 +7,9 @@ import { runSearch } from '../search/run-search'
 import { enrichBusiness } from '../enrich/crawl'
 import { auditWebsite } from '../enrich/audit'
 import { generateWebsite } from '../sites/service'
+import { generateBespokeWebsite, reviseBespokeWebsite } from '../sites/bespoke/generate'
+import { aiAvailability } from '../ai/client'
+import { AppError, NotConfiguredError } from '../core/errors'
 import { captureWebsite } from '../sites/screenshots'
 import { generateProposal } from '../proposals/service'
 import { addProspects, tickCampaign } from '../campaigns/service'
@@ -35,6 +38,7 @@ export const JOB_TYPES = {
   'business.audit': 'Audit de site',
   'website.generate': 'Génération de site',
   'website.capture': 'Captures du site',
+  'website.revise': 'Modification d’un site sur mesure',
   'proposal.generate': 'Proposition commerciale',
   'campaign.tick': 'Planificateur de campagnes',
   'campaign.autofill': 'Remplissage automatique de campagne',
@@ -122,10 +126,37 @@ export const HANDLERS: Record<JobType, Handler> = {
   },
 
   async 'website.generate'(p, ctx) {
-    const input = z.object({ businessId: uuid, templateId: z.string().optional().nullable(), style: z.string().optional().nullable(), generator: z.enum(['auto', 'ai', 'deterministic']).default('auto') }).parse(p)
-    const r = await generateWebsite(input.businessId, { templateId: input.templateId, style: input.style as never, generator: input.generator, jobId: ctx.job.id })
+    const input = z
+      .object({ businessId: uuid, templateId: z.string().optional().nullable(), style: z.string().optional().nullable(), generator: z.enum(['auto', 'bespoke', 'ai', 'deterministic']).default('auto') })
+      .parse(p)
+    // auto: bespoke when an AI is available and the setting says so; template generation otherwise
+    let mode = input.generator
+    if (mode === 'auto' && !input.templateId) {
+      const s = await getSettings()
+      if (s.sites.generationMode === 'bespoke' && (await aiAvailability()).available) mode = 'bespoke'
+    }
+    let r: { websiteId: string; version: number }
+    if (mode === 'bespoke') {
+      try {
+        r = await generateBespokeWebsite(input.businessId, { styleHint: input.style, jobId: ctx.job.id, log: (m) => ctx.log(m) })
+      } catch (e) {
+        // explicit "bespoke" requests fail loudly; "auto" falls back to a template site and says why
+        if (input.generator === 'bespoke' || !(e instanceof AppError)) throw e
+        await ctx.log(`⚠ Sur mesure impossible (${(e as Error).message.slice(0, 200)}) — génération par template`)
+        r = await generateWebsite(input.businessId, { style: input.style as never, generator: 'auto', jobId: ctx.job.id })
+      }
+    } else {
+      r = await generateWebsite(input.businessId, { templateId: input.templateId, style: input.style as never, generator: mode === 'auto' ? 'auto' : mode, jobId: ctx.job.id })
+    }
     await enqueueJob('website.capture', { websiteId: r.websiteId }, { priority: 90, idempotencyKey: `capture:${r.websiteId}:v${r.version}` })
     return r
+  },
+
+  async 'website.revise'(p, ctx) {
+    const { websiteId, instruction } = z.object({ websiteId: uuid, instruction: z.string().min(3).max(2000) }).parse(p)
+    const r = await reviseBespokeWebsite(websiteId, instruction, { jobId: ctx.job.id, log: (m) => ctx.log(m) })
+    await enqueueJob('website.capture', { websiteId }, { priority: 90, idempotencyKey: `capture:${websiteId}:v${r.version}` })
+    return { websiteId, ...r }
   },
 
   async 'website.capture'(p) {

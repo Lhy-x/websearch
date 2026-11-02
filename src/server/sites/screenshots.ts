@@ -2,7 +2,7 @@ import { sql } from '../core/db'
 import { putObject } from '../core/storage'
 import { getBrowser } from '../enrich/browser'
 import { getWebsiteVersion } from './service'
-import { renderSiteDocument } from './html'
+import { renderVersion } from './render-any'
 
 /**
  * Render the current version of a generated site in headless Chromium (from the HTML string — no web
@@ -11,7 +11,7 @@ import { renderSiteDocument } from './html'
 export async function captureWebsite(websiteId: string): Promise<{ version: number; assets: { kind: string; path: string }[] }> {
   const v = await getWebsiteVersion(websiteId)
   if (!v) throw new Error('Aucune version à capturer')
-  const html = renderSiteDocument(v.config, { mode: 'preview', banner: null })
+  const html = await renderVersion(v.config, 'preview', null)
   const browser = await getBrowser()
   const out: { kind: string; path: string; mime: string; size: number }[] = []
   const shoot = async (kind: string, viewport: { width: number; height: number }, scale: number, fullPage: boolean, mobile = false) => {

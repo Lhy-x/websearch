@@ -37,6 +37,13 @@ export async function loadBusinessFacts(businessId: string): Promise<BusinessFac
     if (lines) openingHours = { lines, source: 'OpenStreetMap (à confirmer par l’établissement)' }
   }
   const [audit] = await db<{ issues: { label: string; severity: string }[] }[]>`select issues from website_audits where business_id = ${businessId} order by created_at desc limit 1`
+  const [extra] = await db<{ source_category: string | null; naf_code: string | null }[]>`select source_category, naf_code from businesses where id = ${businessId}`
+  const srcs = await db<{ source: string; raw: { date_creation?: string } }[]>`select source, raw from business_sources where business_id = ${businessId}`
+  const creation = srcs.find((x) => x.source === 'recherche_entreprises')?.raw?.date_creation
+  const enr = await db<{ field: string; value: { title?: string | null; description?: string | null; text?: string } ; source_url: string | null }[]>`
+    select field, value, source_url from business_enrichments where business_id = ${businessId} and field in ('website_meta','website_text')`
+  const meta = enr.find((e) => e.field === 'website_meta')
+  const siteText = enr.find((e) => e.field === 'website_text')
   const sector = b.sector ? SECTOR_BY_ID.get(b.sector) : undefined
   return {
     businessId: b.id,
@@ -58,5 +65,10 @@ export async function loadBusinessFacts(businessId: string): Promise<BusinessFac
     websiteStatus: b.web_presence_status,
     websiteUrl: b.website_url,
     auditFindings: (audit?.issues ?? []).filter((i) => i.severity !== 'info').map((i) => i.label).slice(0, 6),
+    categoryDetail: extra?.source_category ?? null,
+    nafCode: extra?.naf_code ?? null,
+    creationYear: creation && /^\d{4}/.test(creation) ? Number(creation.slice(0, 4)) : null,
+    ownSite: meta || siteText ? { url: b.website_url, title: meta?.value.title ?? null, description: meta?.value.description ?? null, text: siteText?.value.text ?? null } : null,
+    sources: [...new Set(srcs.map((x) => x.source))],
   }
 }

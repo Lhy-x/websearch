@@ -24,11 +24,13 @@ export const scoringWeightsSchema = z.object({
 export const settingsSchema = z.object({
   ai: z
     .object({
-      provider: z.enum(['none', 'anthropic', 'openai', 'openrouter']).default('none'),
+      provider: z.enum(['none', 'claude-code', 'codex', 'anthropic', 'openai', 'openrouter']).default('none'),
       cheapModel: z.string().default(''),
       strongModel: z.string().default(''),
       temperature: z.number().min(0).max(1.5).default(0.6),
       dailyBudgetUsd: z.number().min(0).default(5),
+      /** subscription providers (claude-code / codex): max model calls per day */
+      subscriptionDailyCalls: z.number().int().min(1).max(2000).default(80),
       costMode: z.enum(COST_MODES).default('BALANCED'),
       customSiteInstructions: z.string().max(4000).default(''),
     })
@@ -67,6 +69,10 @@ export const settingsSchema = z.object({
       language: z.enum(['fr', 'en', 'de', 'nl']).default('fr'),
       previewTtlDays: z.number().int().min(1).max(365).default(30),
       previewBaseUrl: z.string().default(''),
+      /** bespoke = AI writes a unique full site (best quality); template = structured templates */
+      generationMode: z.enum(['bespoke', 'template']).default('bespoke'),
+      /** automatic review/correction passes after a bespoke generation (rendered checks in Chromium) */
+      qualityPasses: z.number().int().min(0).max(3).default(1),
       demoDisclaimer: z
         .string()
         .default("Démonstration indépendante réalisée à titre de proposition. Ce site n'est pas le site officiel de l'établissement."),

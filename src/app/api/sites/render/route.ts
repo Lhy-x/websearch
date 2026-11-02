@@ -1,9 +1,13 @@
-import { siteConfigSchema } from '@/lib/site/schema'
+import { websiteVersionSchema, isHtmlSite } from '@/lib/site/bespoke-schema'
 import { adminRoute } from '@/server/http/route'
 import { renderSiteDocument } from '@/server/sites/html'
+import { renderBespokeDocument } from '@/server/sites/bespoke/document'
+import { sanitizeSiteHtml } from '@/server/sites/bespoke/sanitize'
 
-/** Live preview for the editor: validates the draft config and returns HTML (shown in a sandboxed iframe). */
+/** Live preview for the editor: validates (and for HTML sites, sanitizes) the draft, returns HTML for a sandboxed iframe. */
 export const POST = adminRoute(async ({ body }) => {
-  const html = renderSiteDocument(body, { mode: 'editor', banner: null })
+  const html = isHtmlSite(body)
+    ? renderBespokeDocument({ ...body, html: sanitizeSiteHtml(body.html, body.media.map((m) => m.url)).html }, { mode: 'editor' })
+    : renderSiteDocument(body, { mode: 'editor', banner: null })
   return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8' } })
-}, siteConfigSchema)
+}, websiteVersionSchema)

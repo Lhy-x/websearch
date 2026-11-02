@@ -4,6 +4,8 @@ import { auditLog } from '../core/audit'
 import { AppError, NotConfiguredError } from '../core/errors'
 import { getSettings } from '../core/settings'
 import { siteConfigSchema, type SiteConfig, type SiteStyle } from '@/lib/site/schema'
+import { websiteVersionSchema, isHtmlSite, type WebsiteVersionData } from '@/lib/site/bespoke-schema'
+import { sanitizeSiteHtml } from './bespoke/sanitize'
 import { buildDeterministicConfig, enforceFacts } from '@/lib/site/build'
 import { TEMPLATE_BY_ID } from '@/lib/site/templates'
 import { aiAvailability, generateStructured } from '../ai/client'
@@ -83,18 +85,20 @@ export async function generateWebsite(businessId: string, opts: GenerateOptions 
   }
 }
 
-export async function getWebsiteVersion(websiteId: string, version?: number): Promise<{ version: number; config: SiteConfig } | null> {
+export async function getWebsiteVersion(websiteId: string, version?: number): Promise<{ version: number; config: WebsiteVersionData } | null> {
   const db = sql()
   const [row] = version
     ? await db<{ version: number; config: unknown }[]>`select version, config from website_versions where website_id = ${websiteId} and version = ${version}`
     : await db<{ version: number; config: unknown }[]>`select v.version, v.config from website_versions v join generated_websites w on w.id = v.website_id and v.version = w.current_version where w.id = ${websiteId}`
   if (!row) return null
-  return { version: row.version, config: siteConfigSchema.parse(row.config) }
+  return { version: row.version, config: websiteVersionSchema.parse(row.config) }
 }
 
 /** Save an edited config as a new version (validated). Optimistic concurrency on baseVersion. */
 export async function saveWebsiteVersion(websiteId: string, input: unknown, opts: { baseVersion?: number; note?: string } = {}): Promise<number> {
-  const config = siteConfigSchema.parse(input)
+  let config = websiteVersionSchema.parse(input)
+  // manual HTML edits go through the same sanitizer as AI output
+  if (isHtmlSite(config)) config = { ...config, html: sanitizeSiteHtml(config.html, config.media.map((m) => m.url)).html }
   const db = sql()
   return db.begin(async (tx) => {
     const [w] = await tx<{ current_version: number | null; business_id: string }[]>`select current_version, business_id from generated_websites where id = ${websiteId} for update`
@@ -103,7 +107,8 @@ export async function saveWebsiteVersion(websiteId: string, input: unknown, opts
       throw new AppError(`Conflit : la version ${w.current_version} a été enregistrée entre-temps.`, 409, 'CONFLICT')
     const next = (w.current_version ?? 0) + 1
     await tx`insert into website_versions (website_id, version, config, created_by, note) values (${websiteId}, ${next}, ${tx.json(config as never)}, 'manual', ${opts.note ?? null})`
-    await tx`update generated_websites set current_version = ${next}, template_id = ${config.templateId}, style = ${config.style} where id = ${websiteId}`
+    if (isHtmlSite(config)) await tx`update generated_websites set current_version = ${next} where id = ${websiteId}`
+    else await tx`update generated_websites set current_version = ${next}, template_id = ${config.templateId}, style = ${config.style} where id = ${websiteId}`
     return next
   })
 }
@@ -117,7 +122,7 @@ export async function restoreWebsiteVersion(websiteId: string, version: number):
 export interface PreviewLookup {
   websiteId: string
   businessId: string
-  config: SiteConfig
+  config: WebsiteVersionData
   status: 'ok' | 'disabled' | 'expired' | 'not_found'
 }
 

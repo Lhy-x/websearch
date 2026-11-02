@@ -15,6 +15,7 @@ const schema = z.object({
   status: z.string().optional(),
   templateId: z.string().optional(),
   style: z.string().optional(),
+  generator: z.enum(['auto', 'bespoke', 'ai', 'deterministic']).optional(),
 })
 
 /** Bulk actions. Long work is enqueued as jobs; quick DB updates are applied directly. */
@@ -29,7 +30,7 @@ export const POST = adminRoute(async ({ body }) => {
     }
     case 'generate_site': {
       const jobIds = []
-      for (const id of ids.slice(0, 200)) jobIds.push((await enqueueJob('website.generate', { businessId: id, templateId: body.templateId ?? null, style: body.style ?? null }, { priority: 40 })).job.id)
+      for (const id of ids.slice(0, 200)) jobIds.push((await enqueueJob('website.generate', { businessId: id, templateId: body.templateId ?? null, style: body.style ?? null, generator: body.generator ?? 'auto' }, { priority: 40, maxAttempts: 2 })).job.id)
       return { queued: jobIds.length, jobIds }
     }
     case 'add_to_campaign':

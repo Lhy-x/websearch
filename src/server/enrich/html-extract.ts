@@ -15,6 +15,8 @@ export interface PageExtract {
   contactLinks: string[]
   copyrightYear: number | null
   textLength: number
+  /** readable page text (scripts, styles, navigation and footer removed), for the facts dossier */
+  mainText: string
 }
 
 const CTA_RE = /\b(contact|contactez|réserv|reserv|rendez-vous|rdv|devis|appel|commander|book|prendre)\w*/i
@@ -64,5 +66,13 @@ export function extractPage(html: string, pageUrl: string): PageExtract {
     contactLinks: internal.filter((u) => /contact|mentions|legal|a-propos|about|qui-sommes/i.test(u)).slice(0, 4),
     copyrightYear: years.length ? Math.max(...years) : null,
     textLength: text.length,
+    mainText: readableText(html),
   }
+}
+
+/** Visible text of a page without scripts/styles/nav/footer, whitespace-collapsed, max 6 000 chars. */
+export function readableText(html: string): string {
+  const root = parse(html.replace(/>(?=<)/g, '> '), { blockTextElements: { script: false, style: false, noscript: false } })
+  root.querySelectorAll('script,style,noscript,svg,nav,footer,form,iframe,template').forEach((n) => n.remove())
+  return root.textContent.replace(/\s+/g, ' ').trim().slice(0, 6000)
 }

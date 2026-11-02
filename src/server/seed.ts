@@ -8,6 +8,7 @@ export async function seedDefaults() {
     await db`insert into website_templates (id, name, sector, layout, description) values (${t.id}, ${t.name}, ${t.sector}, ${t.layout}, ${t.description})
              on conflict (id) do update set name = excluded.name, sector = excluded.sector, layout = excluded.layout, description = excluded.description`
   }
+  await db`insert into website_templates (id, name, sector, layout, description) values ('sur-mesure', 'Sur mesure (IA)', 'any', 'bespoke', 'Site unique conçu par l’IA à partir des faits du commerce (guide frontend-design)') on conflict (id) do nothing`
   const [{ n } = { n: 0 }] = await db<{ n: number }[]>`select count(*)::int as n from sales_offers`
   if (n === 0) {
     await db`insert into sales_offers (name, kind, description, price_cents) values

@@ -32,6 +32,7 @@ const actionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('preview'), enabled: z.boolean() }),
   z.object({ action: z.literal('extend'), days: z.number().int().min(1).max(365) }),
   z.object({ action: z.literal('capture') }),
+  z.object({ action: z.literal('revise'), instruction: z.string().trim().min(3).max(2000) }),
   z.object({ action: z.literal('export'), includeMedia: z.boolean().default(true) }),
   z.object({ action: z.literal('delete') }),
 ])
@@ -52,6 +53,8 @@ export const POST = adminRoute(async ({ params, body }) => {
     }
     case 'capture':
       return { jobId: (await enqueueJob('website.capture', { websiteId: params.id }, { priority: 30 })).job.id }
+    case 'revise':
+      return { jobId: (await enqueueJob('website.revise', { websiteId: params.id, instruction: body.instruction }, { priority: 20, maxAttempts: 2 })).job.id }
     case 'export': {
       const v = await getWebsiteVersion(params.id)
       if (!v) throw new AppError('Aucune version', 404)

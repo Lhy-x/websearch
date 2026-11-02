@@ -71,6 +71,12 @@ export async function crawlOfficialWebsite(businessId: string, url: string, opts
   await sql()`insert into business_enrichments (business_id, field, value, source, source_url, confidence, verified_at)
     values (${businessId}, 'website_meta', ${sql().json({ title: home.title, description: home.metaDescription } as never)}, 'crawl', ${finalUrl}, 0.9, now())
     on conflict (business_id, field, source) do update set value = excluded.value, source_url = excluded.source_url, verified_at = now(), retrieved_at = now()`
+  // text published by the business itself on its own site: real services, vocabulary, tone
+  const text = pages.map(([u, p]) => `[${u}] ${p.mainText}`).join('\n').slice(0, 8000)
+  if (text.trim())
+    await sql()`insert into business_enrichments (business_id, field, value, source, source_url, confidence, verified_at)
+      values (${businessId}, 'website_text', ${sql().json({ text, pages: pages.map(([u]) => u) } as never)}, 'crawl', ${finalUrl}, 0.9, now())
+      on conflict (business_id, field, source) do update set value = excluded.value, source_url = excluded.source_url, verified_at = now(), retrieved_at = now()`
   return result
 }
 

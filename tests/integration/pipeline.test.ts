@@ -6,6 +6,7 @@ import { generateWebsite, lookupPreview, saveWebsiteVersion, getWebsiteVersion }
 import { generateProposal } from '@/server/proposals/service'
 import { mergeBusinesses } from '@/server/business/merge'
 import { resetDb } from './helpers'
+import type { SiteConfig } from '@/lib/site/schema'
 
 beforeEach(resetDb)
 afterAll(closeDb)
@@ -55,7 +56,7 @@ describe('site generation, versions & previews', () => {
     const { id } = await persistCluster([place()])
     const g = await generateWebsite(id, { generator: 'deterministic' })
     expect(g.version).toBe(1)
-    const v1 = (await getWebsiteVersion(g.websiteId))!
+    const v1 = (await getWebsiteVersion(g.websiteId))! as { version: number; config: SiteConfig }
     expect(v1.config.business.name).toBe('TEST Coiffure Erika')
     const edited = { ...v1.config, hero: { ...v1.config.hero, subtitle: 'Nouveau texte' } }
     expect(await saveWebsiteVersion(g.websiteId, edited, { baseVersion: 1 })).toBe(2)

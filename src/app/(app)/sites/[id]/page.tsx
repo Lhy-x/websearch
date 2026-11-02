@@ -4,6 +4,8 @@ import { getSettings } from '@/server/core/settings'
 import { getWebsiteVersion } from '@/server/sites/service'
 import { previewUrl } from '@/server/proposals/service'
 import { Editor } from './editor'
+import { HtmlEditor } from './html-editor'
+import { isHtmlSite } from '@/lib/site/bespoke-schema'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,10 +20,13 @@ export default async function SiteEditorPage({ params }: { params: Promise<{ id:
   const versions = await db<{ version: number; created_by: string; note: string | null; created_at: Date }[]>`select version, created_by, note, created_at from website_versions where website_id = ${id} order by version desc`
   const shots = await db<{ kind: string; path: string; version: number }[]>`select kind, path, version from website_assets where website_id = ${id} and kind like 'screenshot%' order by created_at desc limit 6`
   const settings = await getSettings()
+  const siteProps = { ...site, preview_expires_at: site.preview_expires_at?.toISOString() ?? null, previewUrl: previewUrl(site.preview_token, settings.sites.previewBaseUrl) }
+  const versionList = versions.map((x) => ({ ...x, created_at: x.created_at.toISOString() }))
+  if (v && isHtmlSite(v.config)) return <HtmlEditor site={siteProps} initial={{ version: v.version, config: v.config }} versions={versionList} shots={shots} />
   return (
     <Editor
-      site={{ ...site, preview_expires_at: site.preview_expires_at?.toISOString() ?? null, previewUrl: previewUrl(site.preview_token, settings.sites.previewBaseUrl) }}
-      initial={v ? { version: v.version, config: v.config } : null}
+      site={siteProps}
+      initial={v && !isHtmlSite(v.config) ? { version: v.version, config: v.config } : null}
       versions={versions.map((x) => ({ ...x, created_at: x.created_at.toISOString() }))}
       shots={shots}
     />

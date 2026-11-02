@@ -19,4 +19,10 @@ export interface BusinessFacts {
   websiteStatus: string
   websiteUrl: string | null
   auditFindings: string[]
+  /** extended dossier (optional: used by the bespoke generator) */
+  categoryDetail?: string | null
+  nafCode?: string | null
+  creationYear?: number | null
+  ownSite?: { url: string | null; title: string | null; description: string | null; text: string | null } | null
+  sources?: string[]
 }

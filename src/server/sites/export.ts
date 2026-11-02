@@ -4,13 +4,21 @@ import { safeFetch } from '../core/safe-fetch'
 import { slugify } from '../core/normalize'
 import { SITE_CSS } from '@/lib/site/render/site-css'
 import type { SiteConfig } from '@/lib/site/schema'
+import { isHtmlSite, type WebsiteVersionData } from '@/lib/site/bespoke-schema'
+import { renderBespokeDocument } from './bespoke/document'
 import { renderSiteDocument } from './html'
 
 /**
  * Static export: index.html + site.css + site.json (source config, re-importable) + authorised media
  * downloaded locally + README. The demo banner and noindex are removed for delivery to the client.
  */
-export async function exportSiteZip(cfg: SiteConfig, opts: { includeMedia?: boolean; allowPrivate?: boolean } = {}): Promise<{ filename: string; buffer: Buffer; warnings: string[] }> {
+export async function exportSiteZip(v: WebsiteVersionData, opts: { includeMedia?: boolean; allowPrivate?: boolean } = {}): Promise<{ filename: string; buffer: Buffer; warnings: string[] }> {
+  if (isHtmlSite(v)) return zip(slugify(v.businessName) || 'site', [
+    { name: 'index.html', data: renderBespokeDocument(v, { mode: 'export' }) },
+    { name: 'site.json', data: JSON.stringify(v, null, 2) },
+    { name: 'README.txt', data: `Site sur mesure « ${v.businessName} » — fichier unique index.html (CSS intégré, aucun JavaScript), prêt pour tout hébergement statique.\nVérifiez les prestations et les textes avec le client avant publication.\n` },
+  ], [])
+  const cfg: SiteConfig = v
   const warnings: string[] = []
   const files: { name: string; data: Buffer | string }[] = []
   const exported: SiteConfig = structuredClone(cfg)
@@ -38,6 +46,10 @@ export async function exportSiteZip(cfg: SiteConfig, opts: { includeMedia?: bool
     name: 'README.txt',
     data: `Site statique « ${cfg.business.name} »\n\n- index.html et site.css : site prêt à héberger (tout hébergement statique : o2switch, OVH, Netlify, GitHub Pages…).\n- site.json : configuration source, ré-importable dans ProspectForge.\n- assets/ : médias dont la licence a été renseignée.\n\nAvant publication : vérifier les prestations indiquées comme « indicatives », les horaires, et retirer/adapter la mention de démonstration dans le pied de page si le client a validé le site.\n`,
   })
+  return zip(slugify(cfg.business.name) || 'site', files, warnings)
+}
+
+async function zip(name: string, files: { name: string; data: Buffer | string }[], warnings: string[]) {
   const archive = new ZipArchive({ zlib: { level: 9 } })
   const sink = new PassThrough()
   const chunks: Buffer[] = []
@@ -50,5 +62,5 @@ export async function exportSiteZip(cfg: SiteConfig, opts: { includeMedia?: bool
   for (const f of files) archive.append(f.data, { name: f.name })
   await archive.finalize()
   await done
-  return { filename: `${slugify(cfg.business.name) || 'site'}.zip`, buffer: Buffer.concat(chunks), warnings }
+  return { filename: `${name}.zip`, buffer: Buffer.concat(chunks), warnings }
 }

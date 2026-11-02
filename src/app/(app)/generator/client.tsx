@@ -31,7 +31,7 @@ export function GeneratorClient({ candidates, preselect, jobs }: { candidates: C
   }, [preselect])
   const chosen = [...sel.ids]
   const count = chosen.length * variants
-  const est = useQuery({ queryKey: ['est', count, generator], queryFn: () => api<{ ai: boolean; model: string | null; perItemUsd: number | null; totalUsd: number | null; note: string }>(`/api/estimate?task=site_generation&count=${Math.max(1, count)}`), enabled: generator !== 'deterministic' })
+  const est = useQuery({ queryKey: ['est', count, generator], queryFn: () => api<{ ai: boolean; model: string | null; perItemUsd: number | null; totalUsd: number | null; note: string }>(`/api/estimate?task=${generator === 'ai' ? 'site_generation' : 'site_bespoke'}&count=${Math.max(1, count)}`), enabled: generator !== 'deterministic' })
   useEffect(() => {
     if (jobs.some((j) => ['PENDING', 'RUNNING', 'RETRYING'].includes(j.status))) {
       const t = setTimeout(() => router.refresh(), 2500)
@@ -63,7 +63,7 @@ export function GeneratorClient({ candidates, preselect, jobs }: { candidates: C
           <CardBody className="space-y-3">
             <Field label="Template"><Select value={templateId} onChange={(e) => setTemplateId(e.target.value)}><option value="">Automatique (selon le secteur)</option>{TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</Select></Field>
             <Field label="Style imposé"><Select value={style} onChange={(e) => setStyle(e.target.value)}><option value="">Libre</option>{STYLES.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}</Select></Field>
-            <Field label="Moteur"><Select value={generator} onChange={(e) => setGenerator(e.target.value)}><option value="auto">Automatique</option><option value="ai">IA</option><option value="deterministic">Déterministe (gratuit)</option></Select></Field>
+            <Field label="Moteur"><Select value={generator} onChange={(e) => setGenerator(e.target.value)}><option value="auto">Automatique (sur mesure si l’IA est disponible)</option><option value="bespoke">Sur mesure (IA — qualité maximale)</option><option value="ai">Template + textes IA</option><option value="deterministic">Template déterministe (gratuit)</option></Select></Field>
             <Field label="Variantes par prospect" hint="Plusieurs styles différents pour le même prospect"><Select value={variants} onChange={(e) => setVariants(Number(e.target.value))}>{[1, 2, 3].map((n) => <option key={n} value={n}>{n}</option>)}</Select></Field>
             {generator !== 'deterministic' && est.data ? (
               <Notice tone="info" title={est.data.ai ? `Coût estimé : ${est.data.totalUsd != null ? fmtUsd(est.data.totalUsd) : 'inconnu'} pour ${count} génération(s)` : 'Aucun coût IA'}>{est.data.note}</Notice>
@@ -78,7 +78,7 @@ export function GeneratorClient({ candidates, preselect, jobs }: { candidates: C
                   const styles = style ? [style] : variants > 1 ? STYLES.filter((s) => ['moderne', 'elegant', 'minimaliste', 'premium', 'artisanal'].includes(s)) : [null]
                   let queued = 0
                   for (let v = 0; v < variants; v++) {
-                    const r = await api<{ queued: number }>('/api/prospects/bulk', { method: 'POST', json: { ids: chosen, action: 'generate_site', templateId: templateId || undefined, style: (styles[v % styles.length] as string | null) ?? undefined } })
+                    const r = await api<{ queued: number }>('/api/prospects/bulk', { method: 'POST', json: { ids: chosen, action: 'generate_site', generator, templateId: templateId || undefined, style: (styles[v % styles.length] as string | null) ?? undefined } })
                     queued += r.queued
                   }
                   toast.success(`${queued} génération(s) en file d’attente`)

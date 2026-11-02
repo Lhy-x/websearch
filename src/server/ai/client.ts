@@ -4,7 +4,8 @@ import type { z } from 'zod'
 import { sql } from '../core/db'
 import { AppError, NotConfiguredError, TransientError, errorMessage } from '../core/errors'
 import { getSecret, getSettings } from '../core/settings'
-import { chooseModel, estimateMaxCostUsd, priceUsd, type ModelChoice, type Provider, type TaskKind } from './models'
+import { chooseModel, estimateMaxCostUsd, isSubscription, priceUsd, type ModelChoice, type Provider, type TaskKind } from './models'
+import { callCli, cliStatus, type CliProvider } from './cli'
 
 export interface StructuredRequest<T extends z.ZodType> {
   task: TaskKind
@@ -44,15 +45,44 @@ export async function recordUsage(u: { provider: string; model?: string | null; 
             ${u.success ?? true}, ${u.error?.slice(0, 1000) ?? null}, ${u.jobId ?? null}, ${u.businessId ?? null})`
 }
 
+export class SubscriptionCapError extends AppError {
+  constructor(n: number, cap: number) {
+    super(`Plafond d’appels IA de l’abonnement atteint pour aujourd’hui (${n}/${cap}). Augmentez-le dans Paramètres → IA.`, 429, 'BUDGET_EXCEEDED')
+  }
+}
+
+export async function callsToday(provider: string): Promise<number> {
+  const [r] = await sql()<{ n: number }[]>`select count(*)::int n from api_usage where provider = ${provider} and created_at >= date_trunc('day', now())`
+  return r?.n ?? 0
+}
+
+/** Spending guard: dollars for API providers, number of calls for subscription providers. */
+export async function assertBudget(provider: Provider, estimateUsd: number) {
+  const s = await getSettings()
+  if (isSubscription(provider)) {
+    const n = await callsToday(provider)
+    if (n >= s.ai.subscriptionDailyCalls) throw new SubscriptionCapError(n, s.ai.subscriptionDailyCalls)
+    return
+  }
+  const spent = await spentTodayUsd()
+  if (spent + estimateUsd > s.ai.dailyBudgetUsd) throw new BudgetExceededError(spent, s.ai.dailyBudgetUsd)
+}
+
 export async function aiAvailability(): Promise<{ available: boolean; provider: string; reason?: string }> {
   const s = await getSettings()
   if (s.ai.provider === 'none') return { available: false, provider: 'none', reason: 'Aucun fournisseur IA sélectionné (Paramètres → IA)' }
+  if (isSubscription(s.ai.provider)) {
+    const st = await cliStatus(s.ai.provider as CliProvider)
+    if (!st.installed) return { available: false, provider: s.ai.provider, reason: `CLI introuvable (${st.detail})` }
+    if (st.loggedIn === false) return { available: false, provider: s.ai.provider, reason: st.detail }
+    return { available: true, provider: s.ai.provider }
+  }
   const key = await getSecret(keyName(s.ai.provider))
   if (!key) return { available: false, provider: s.ai.provider, reason: `Clé ${keyName(s.ai.provider)} manquante` }
   return { available: true, provider: s.ai.provider }
 }
 
-export function keyName(p: Provider) {
+export function keyName(p: Provider): 'ANTHROPIC_API_KEY' | 'OPENAI_API_KEY' | 'OPENROUTER_API_KEY' {
   return p === 'anthropic' ? 'ANTHROPIC_API_KEY' : p === 'openai' ? 'OPENAI_API_KEY' : 'OPENROUTER_API_KEY'
 }
 
@@ -134,12 +164,11 @@ export async function generateStructured<T extends z.ZodType>(req: StructuredReq
   const settings = await getSettings()
   const choice = chooseModel(settings.ai, req.task)
   if (!choice) throw new NotConfiguredError('Fournisseur IA', 'choisissez un fournisseur et un modèle dans Paramètres → IA')
+  const user = buildUserMessage(req.instructions, req.untrustedData)
+  await assertBudget(choice.provider, estimateMaxCostUsd(choice.provider, choice.model, req.system.length + user.length, choice.maxTokens))
+  if (isSubscription(choice.provider)) return generateWithCli(choice, req, user)
   const apiKey = await getSecret(keyName(choice.provider))
   if (!apiKey) throw new NotConfiguredError(`IA (${choice.provider})`, `renseignez ${keyName(choice.provider)}`)
-  const user = buildUserMessage(req.instructions, req.untrustedData)
-  const spent = await spentTodayUsd()
-  const estimate = estimateMaxCostUsd(choice.provider, choice.model, req.system.length + user.length, choice.maxTokens)
-  if (spent + estimate > settings.ai.dailyBudgetUsd) throw new BudgetExceededError(spent, settings.ai.dailyBudgetUsd)
 
   let lastErr: unknown
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -154,6 +183,33 @@ export async function generateStructured<T extends z.ZodType>(req: StructuredReq
     } catch (e) {
       lastErr = e
       await recordUsage({ provider: choice.provider, model: choice.model, operation: req.task, success: false, error: errorMessage(e), jobId: req.jobId, businessId: req.businessId })
+      if (!(e instanceof AppError && e.code === 'AI_INVALID_OUTPUT')) throw e
+    }
+  }
+  throw lastErr
+}
+
+/** Subscription path (claude / codex CLI): schema-constrained output, Zod-validated, one corrective retry. */
+async function generateWithCli<T extends z.ZodType>(choice: ModelChoice, req: StructuredRequest<T>, user: string): Promise<StructuredResult<z.infer<T>>> {
+  let lastErr: unknown
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const out = await callCli({
+        provider: choice.provider as CliProvider,
+        model: choice.model || undefined,
+        system: req.system,
+        prompt: attempt ? `${user}\n\nATTENTION : ta réponse précédente ne respectait pas le schéma JSON demandé.` : user,
+        schema: req.schema,
+        effort: choice.effort,
+        timeoutMs: req.task === 'site_bespoke' ? 15 * 60_000 : 5 * 60_000,
+      })
+      const v = req.schema.safeParse(out.data)
+      if (!v.success) throw new AppError(`Réponse IA non conforme : ${v.error.issues.slice(0, 3).map((i) => i.path.join('.') + ' ' + i.message).join('; ')}`, 422, 'AI_INVALID_OUTPUT')
+      await recordUsage({ provider: choice.provider, model: out.model, operation: req.task, inputTokens: out.inputTokens, outputTokens: out.outputTokens, units: 1, costUsd: 0, jobId: req.jobId, businessId: req.businessId })
+      return { data: v.data as z.infer<T>, provider: choice.provider, model: out.model, inputTokens: out.inputTokens, outputTokens: out.outputTokens, costUsd: 0 }
+    } catch (e) {
+      lastErr = e
+      await recordUsage({ provider: choice.provider, model: choice.model || null, operation: req.task, units: 1, success: false, error: errorMessage(e), jobId: req.jobId, businessId: req.businessId })
       if (!(e instanceof AppError && e.code === 'AI_INVALID_OUTPUT')) throw e
     }
   }

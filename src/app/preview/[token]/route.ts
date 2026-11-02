@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { sql } from '@/server/core/db'
 import { lookupPreview } from '@/server/sites/service'
-import { renderSiteDocument } from '@/server/sites/html'
+import { renderVersion, businessNameOf } from '@/server/sites/render-any'
 import { SESSION_COOKIE, verifySession } from '@/lib/session'
 
 const CSP = [
@@ -39,7 +39,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
       await sql()`update generated_websites set view_count = view_count + 1, last_viewed_at = now() where id = ${p.websiteId}`
     }
   }
-  const html = renderSiteDocument(p.config, { mode: 'preview', banner: `Démonstration non officielle — maquette proposée à ${p.config.business.name}, réalisée de façon indépendante.` })
+  const html = await renderVersion(p.config, 'preview', `Démonstration non officielle — maquette proposée à ${businessNameOf(p.config)}, réalisée de façon indépendante.`)
   return new Response(html, {
     headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex, nofollow, noarchive', 'content-security-policy': CSP, 'cache-control': 'private, no-store', 'referrer-policy': 'no-referrer' },
   })

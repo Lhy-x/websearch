@@ -2,8 +2,9 @@ import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import { AppError, NotConfiguredError, TransientError } from '../core/errors'
 import { getSecret, getSettings } from '../core/settings'
-import { BudgetExceededError, keyName, recordUsage, spentTodayUsd } from '../ai/client'
-import { chooseModel, estimateMaxCostUsd, priceUsd } from '../ai/models'
+import { assertBudget, keyName, recordUsage } from '../ai/client'
+import { chooseModel, estimateMaxCostUsd, isSubscription, priceUsd } from '../ai/models'
+import { callCli, type CliProvider } from '../ai/cli'
 import { SECTORS } from '@/lib/sectors'
 import { TOOLS } from './tools'
 import type { PlannedCall } from './rules'
@@ -15,6 +16,8 @@ Tu ne réponds pas de mémoire : tu traduis la demande de l'utilisateur en appel
 - Tu ne peux ni envoyer d'emails ni activer une campagne : indique-le si on te le demande.
 - Si aucun outil ne correspond, réponds en une phrase avec ce que tu sais faire.
 Secteurs disponibles (identifiants) : ${SECTORS.map((s) => `${s.id}=${s.label}`).join(', ')}.`
+
+const PLAN_SCHEMA = z.object({ calls: z.array(z.object({ tool: z.string(), inputJson: z.string() })).max(5), note: z.string() })
 
 function toolSchemas() {
   return TOOLS.map((t) => {
@@ -28,12 +31,36 @@ export async function planWithAi(message: string, selection: string[]): Promise<
   const settings = await getSettings()
   const choice = chooseModel(settings.ai, 'assistant')
   if (!choice) throw new NotConfiguredError('Fournisseur IA', 'Paramètres → IA')
+  const user = `${message}\n\n(Contexte : ${selection.length} prospect(s) sélectionné(s) dans l'interface${selection.length ? ` ; identifiants : ${selection.slice(0, 200).join(', ')}` : ''}. Date : ${new Date().toISOString().slice(0, 10)}.)`
+  await assertBudget(choice.provider, estimateMaxCostUsd(choice.provider, choice.model, SYSTEM.length + user.length + 4000, choice.maxTokens))
+  const tools = toolSchemas()
+  if (isSubscription(choice.provider)) {
+    const out = await callCli({
+      provider: choice.provider as CliProvider,
+      model: choice.model || undefined,
+      system: `${SYSTEM}\nOutils disponibles (nom, description, JSON Schema des paramètres) :\n${tools.map((t) => `- ${t.name} : ${t.description}\n  ${JSON.stringify(t.schema)}`).join('\n')}\nRéponds avec { "calls": [{ "tool": nom, "inputJson": paramètres encodés en JSON }], "note": phrase courte ou chaîne vide }.`,
+      prompt: user,
+      schema: PLAN_SCHEMA,
+      effort: 'low',
+      timeoutMs: 3 * 60_000,
+    })
+    const plan = PLAN_SCHEMA.parse(out.data)
+    await recordUsage({ provider: choice.provider, model: out.model, operation: 'assistant', inputTokens: out.inputTokens, outputTokens: out.outputTokens, units: 1, costUsd: 0 })
+    return {
+      calls: plan.calls.map((c) => {
+        try {
+          return { tool: c.tool, input: JSON.parse(c.inputJson || '{}') as Record<string, unknown> }
+        } catch {
+          return { tool: c.tool, input: { __invalid: c.inputJson } }
+        }
+      }),
+      note: plan.note.trim() || null,
+      model: out.model,
+      costUsd: 0,
+    }
+  }
   const apiKey = await getSecret(keyName(choice.provider))
   if (!apiKey) throw new NotConfiguredError(`IA (${choice.provider})`, `renseignez ${keyName(choice.provider)}`)
-  const user = `${message}\n\n(Contexte : ${selection.length} prospect(s) sélectionné(s) dans l'interface${selection.length ? ` ; identifiants : ${selection.slice(0, 200).join(', ')}` : ''}. Date : ${new Date().toISOString().slice(0, 10)}.)`
-  const spent = await spentTodayUsd()
-  if (spent + estimateMaxCostUsd(choice.provider, choice.model, SYSTEM.length + user.length + 4000, choice.maxTokens) > settings.ai.dailyBudgetUsd) throw new BudgetExceededError(spent, settings.ai.dailyBudgetUsd)
-  const tools = toolSchemas()
   try {
     if (choice.provider === 'anthropic') {
       const client = new Anthropic({ apiKey, maxRetries: 2, timeout: 60_000 })

@@ -1,0 +1,37 @@
+/**
+ * Offline fallback gazetteer (city centre coordinates, ~0.01° precision) used only when the online
+ * geocoders (api-adresse.data.gouv.fr, Nominatim) are unreachable. Users can always enter lat/lon.
+ */
+export const BUILTIN_CITIES: [country: 'FR' | 'BE' | 'CH', name: string, lat: number, lon: number][] = [
+  ['FR', 'Paris', 48.8566, 2.3522], ['FR', 'Marseille', 43.2965, 5.3698], ['FR', 'Lyon', 45.764, 4.8357], ['FR', 'Toulouse', 43.6047, 1.4442],
+  ['FR', 'Nice', 43.7102, 7.262], ['FR', 'Nantes', 47.2184, -1.5536], ['FR', 'Montpellier', 43.6108, 3.8767], ['FR', 'Strasbourg', 48.5734, 7.7521],
+  ['FR', 'Bordeaux', 44.8378, -0.5792], ['FR', 'Lille', 50.6292, 3.0573], ['FR', 'Rennes', 48.1173, -1.6778], ['FR', 'Reims', 49.2583, 4.0317],
+  ['FR', 'Toulon', 43.1242, 5.928], ['FR', 'Saint-Étienne', 45.4397, 4.3872], ['FR', 'Le Havre', 49.4944, 0.1079], ['FR', 'Grenoble', 45.1885, 5.7245],
+  ['FR', 'Dijon', 47.322, 5.0415], ['FR', 'Angers', 47.4784, -0.5632], ['FR', 'Nîmes', 43.8367, 4.3601], ['FR', 'Villeurbanne', 45.7719, 4.8902],
+  ['FR', 'Clermont-Ferrand', 45.7772, 3.087], ['FR', 'Le Mans', 48.0061, 0.1996], ['FR', 'Aix-en-Provence', 43.5297, 5.4474], ['FR', 'Brest', 48.3904, -4.4861],
+  ['FR', 'Tours', 47.3941, 0.6848], ['FR', 'Amiens', 49.8941, 2.2958], ['FR', 'Limoges', 45.8336, 1.2611], ['FR', 'Annecy', 45.8992, 6.1294],
+  ['FR', 'Perpignan', 42.6887, 2.8948], ['FR', 'Boulogne-Billancourt', 48.8397, 2.2399], ['FR', 'Metz', 49.1193, 6.1757], ['FR', 'Besançon', 47.2378, 6.0241],
+  ['FR', 'Orléans', 47.9029, 1.9093], ['FR', 'Rouen', 49.4431, 1.0993], ['FR', 'Mulhouse', 47.7508, 7.3359], ['FR', 'Caen', 49.1829, -0.3707],
+  ['FR', 'Nancy', 48.6921, 6.1844], ['FR', 'Argenteuil', 48.9472, 2.2467], ['FR', 'Montreuil', 48.8638, 2.4485], ['FR', 'Roubaix', 50.6942, 3.1746],
+  ['FR', 'Tourcoing', 50.7239, 3.1612], ['FR', 'Avignon', 43.9493, 4.8055], ['FR', 'Poitiers', 46.5802, 0.3404], ['FR', 'Pau', 43.2951, -0.3708],
+  ['FR', 'La Rochelle', 46.1603, -1.1511], ['FR', 'Calais', 50.9513, 1.8587], ['FR', 'Cannes', 43.5528, 7.0174], ['FR', 'Antibes', 43.5808, 7.1251],
+  ['FR', 'Béziers', 43.3442, 3.2158], ['FR', 'Colmar', 48.0794, 7.3585], ['FR', 'Bourges', 47.081, 2.3988], ['FR', 'Quimper', 47.996, -4.1024],
+  ['FR', 'Valence', 44.9334, 4.8924], ['FR', 'Troyes', 48.2973, 4.0744], ['FR', 'Chambéry', 45.5646, 5.9178], ['FR', 'Lorient', 47.7483, -3.3702],
+  ['FR', 'Niort', 46.3237, -0.4588], ['FR', 'Vannes', 47.6582, -2.7608], ['FR', 'Saint-Malo', 48.6493, -2.0257], ['FR', 'Évreux', 49.027, 1.1508],
+  ['FR', 'Dieppe', 49.9225, 1.0781], ['FR', 'Elbeuf', 49.2865, 1.0083], ['FR', 'Cherbourg-en-Cotentin', 49.6337, -1.6222], ['FR', 'Bayonne', 43.4929, -1.4748],
+  ['FR', 'Ajaccio', 41.9192, 8.7386], ['FR', 'Bastia', 42.6977, 9.4508], ['FR', 'Angoulême', 45.6484, 0.1562], ['FR', 'Saint-Nazaire', 47.2735, -2.2138],
+  ['FR', 'Beauvais', 49.4295, 2.0807], ['FR', 'Chartres', 48.4439, 1.489], ['FR', 'Laval', 48.0707, -0.7734], ['FR', 'Arras', 50.291, 2.7775],
+  ['FR', 'Dunkerque', 51.0343, 2.3768], ['FR', 'Versailles', 48.8049, 2.1204], ['FR', 'Saint-Denis', 48.9362, 2.3574], ['FR', 'Nanterre', 48.8924, 2.2071],
+  ['FR', 'Créteil', 48.7904, 2.4556], ['FR', 'Vitry-sur-Seine', 48.7875, 2.3928], ['FR', 'Brive-la-Gaillarde', 45.1589, 1.5321], ['FR', 'Albi', 43.9289, 2.148],
+  ['FR', 'Carcassonne', 43.2122, 2.3537], ['FR', 'Montauban', 44.0176, 1.355], ['FR', 'Agen', 44.2033, 0.6163], ['FR', 'Périgueux', 45.1846, 0.7214],
+  ['BE', 'Bruxelles', 50.8503, 4.3517], ['BE', 'Anvers', 51.2194, 4.4025], ['BE', 'Antwerpen', 51.2194, 4.4025], ['BE', 'Gand', 51.0543, 3.7174],
+  ['BE', 'Gent', 51.0543, 3.7174], ['BE', 'Charleroi', 50.4108, 4.4446], ['BE', 'Liège', 50.6326, 5.5797], ['BE', 'Bruges', 51.2093, 3.2247],
+  ['BE', 'Namur', 50.4674, 4.872], ['BE', 'Louvain', 50.8798, 4.7005], ['BE', 'Leuven', 50.8798, 4.7005], ['BE', 'Mons', 50.4542, 3.9567],
+  ['BE', 'Malines', 51.0259, 4.4776], ['BE', 'Mechelen', 51.0259, 4.4776], ['BE', 'Tournai', 50.6056, 3.3889], ['BE', 'Wavre', 50.7167, 4.6114],
+  ['BE', 'Arlon', 49.6833, 5.8167], ['BE', 'Hasselt', 50.9307, 5.3378], ['BE', 'Courtrai', 50.8279, 3.2649], ['BE', 'Ostende', 51.2154, 2.9286],
+  ['CH', 'Zurich', 47.3769, 8.5417], ['CH', 'Zürich', 47.3769, 8.5417], ['CH', 'Genève', 46.2044, 6.1432], ['CH', 'Bâle', 47.5596, 7.5886],
+  ['CH', 'Basel', 47.5596, 7.5886], ['CH', 'Lausanne', 46.5197, 6.6323], ['CH', 'Berne', 46.948, 7.4474], ['CH', 'Bern', 46.948, 7.4474],
+  ['CH', 'Winterthour', 47.4988, 8.7237], ['CH', 'Lucerne', 47.0502, 8.3093], ['CH', 'Luzern', 47.0502, 8.3093], ['CH', 'Saint-Gall', 47.4245, 9.3767],
+  ['CH', 'Lugano', 46.0037, 8.9511], ['CH', 'Bienne', 47.1368, 7.2468], ['CH', 'Fribourg', 46.8065, 7.1619], ['CH', 'Neuchâtel', 46.9896, 6.9293],
+  ['CH', 'Sion', 46.2331, 7.3606], ['CH', 'Montreux', 46.4312, 6.9107], ['CH', 'Yverdon-les-Bains', 46.7785, 6.6411], ['CH', 'La Chaux-de-Fonds', 47.1035, 6.8328],
+]

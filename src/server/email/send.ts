@@ -18,6 +18,8 @@ interface MsgRow {
   subject: string
   body_text: string
   message_id_header: string
+  in_reply_to: string | null
+  references_header: string | null
   unsubscribe_token: string
   idempotency_key: string
   attempts: number
@@ -36,7 +38,7 @@ export async function sendOutbound(messageId: string, provider?: EmailProvider):
     update outbound_messages set status = 'SENDING', attempts = attempts + 1
     where id = ${messageId} and status = 'SCHEDULED' and (scheduled_at is null or scheduled_at <= now())
     returning id, campaign_id, campaign_prospect_id, business_id, to_email, from_email, from_name, reply_to, subject, body_text,
-              message_id_header, unsubscribe_token, idempotency_key, attempts, is_test`
+              message_id_header, in_reply_to, references_header, unsubscribe_token, idempotency_key, attempts, is_test`
   if (!m) return { outcome: 'SKIPPED', reason: 'déjà traité ou non planifié' }
   const cancel = async (reason: string) => {
     await db`update outbound_messages set status = 'CANCELLED', last_error = ${reason} where id = ${m.id}`
@@ -72,7 +74,12 @@ export async function sendOutbound(messageId: string, provider?: EmailProvider):
       text: m.body_text,
       messageId: m.message_id_header,
       idempotencyKey: m.idempotency_key,
-      headers: { 'List-Unsubscribe': `<${unsubscribeUrl(m.unsubscribe_token)}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click', 'X-PF-Message': m.id },
+      headers: {
+        'List-Unsubscribe': `<${unsubscribeUrl(m.unsubscribe_token)}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        'X-PF-Message': m.id,
+        ...(m.in_reply_to ? { 'In-Reply-To': m.in_reply_to, References: m.references_header ?? m.in_reply_to } : {}),
+      },
     })
     await db`update outbound_messages set status = 'SENT', sent_at = now(), provider = ${r.provider}, provider_message_id = ${r.providerMessageId}, last_error = null where id = ${m.id}`
     await db`insert into email_events (outbound_message_id, provider, provider_event_id, type, payload) values (${m.id}, ${r.provider}, ${'local-sent-' + m.id}, 'sent', '{}'::jsonb) on conflict do nothing`

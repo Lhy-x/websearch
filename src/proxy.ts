@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { SESSION_COOKIE, verifySession } from '@/lib/session'
 
 /** Public routes: login, prospect-facing demo previews, unsubscribe, provider webhooks, health. */
-const PUBLIC = [/^\/login$/, /^\/preview\//, /^\/u\//, /^\/api\/auth\/login$/, /^\/api\/webhooks\//, /^\/api\/health$/, /^\/api\/unsubscribe\//, /^\/_next\//, /^\/favicon/]
+const PUBLIC = [/^\/login$/, /^\/preview\//, /^\/u\//, /^\/api\/auth\/login$/, /^\/api\/webhooks\//, /^\/api\/health$/, /^\/_next\//, /^\/favicon/]
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl

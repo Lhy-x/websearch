@@ -78,6 +78,7 @@ export interface SafeResponse {
   status: number
   headers: Record<string, string>
   body: string
+  bodyBuffer: Buffer
   redirects: string[]
   elapsedMs: number
   truncated: boolean
@@ -115,7 +116,7 @@ export async function safeFetch(
         await res.body?.cancel()
         continue
       }
-      let body = ''
+      let buf = Buffer.alloc(0)
       let truncated = false
       if (opts.method !== 'HEAD' && res.body) {
         const reader = res.body.getReader()
@@ -132,11 +133,11 @@ export async function safeFetch(
           }
           chunks.push(value)
         }
-        body = Buffer.concat(chunks).toString('utf8')
+        buf = Buffer.concat(chunks)
       }
       const headers: Record<string, string> = {}
       res.headers.forEach((v, k) => (headers[k] = v))
-      return { url: current, status: res.status, headers, body, redirects, elapsedMs: Date.now() - started, truncated }
+      return { url: current, status: res.status, headers, body: buf.toString('utf8'), bodyBuffer: buf, redirects, elapsedMs: Date.now() - started, truncated }
     } finally {
       clearTimeout(timer)
     }

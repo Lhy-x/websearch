@@ -69,7 +69,7 @@ test('reference workflow end-to-end', async ({ page, request, baseURL }) => {
 
   // 6. Edit the site → new version
   await page.getByRole('link', { name: 'Éditer' }).first().click()
-  await expect(page.getByText(/Éditeur — v1/)).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: /Éditeur — v1/ })).toBeVisible()
   const subtitle = page.getByLabel('Sous-titre')
   await subtitle.fill('Un salon de quartier — texte modifié en E2E.')
   await page.getByRole('button', { name: 'Enregistrer' }).click()

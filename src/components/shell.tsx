@@ -1,5 +1,5 @@
 'use client'
-import { BarChart3, Bot, Building2, Globe, Inbox, KanbanSquare, LayoutDashboard, LogOut, Megaphone, Moon, Search, Settings, ShieldAlert, Sparkles, Sun, Target, Wand2, Pause } from 'lucide-react'
+import { BarChart3, Bot, MessageSquareText, Building2, Globe, Inbox, KanbanSquare, LayoutDashboard, LogOut, Megaphone, Moon, Search, Settings, ShieldAlert, Sparkles, Sun, Target, Wand2, Pause } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
@@ -18,6 +18,7 @@ const NAV = [
   { href: '/crm', label: 'CRM', icon: KanbanSquare },
   { href: '/automations', label: 'Automatisations', icon: Bot },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/assistant', label: 'Assistant', icon: MessageSquareText },
   { href: '/settings', label: 'Paramètres', icon: Settings },
 ]
 

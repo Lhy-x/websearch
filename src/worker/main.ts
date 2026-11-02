@@ -19,6 +19,8 @@ async function main() {
   }
   process.on('SIGINT', () => void shutdown('SIGINT'))
   process.on('SIGTERM', () => void shutdown('SIGTERM'))
+  // a single faulty job must never take the whole worker down
+  process.on('unhandledRejection', (e) => console.error('[worker] rejet non géré :', e))
   await worker.start()
 }
 

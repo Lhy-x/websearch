@@ -52,7 +52,7 @@ export async function aiAvailability(): Promise<{ available: boolean; provider: 
   return { available: true, provider: s.ai.provider }
 }
 
-function keyName(p: Provider) {
+export function keyName(p: Provider) {
   return p === 'anthropic' ? 'ANTHROPIC_API_KEY' : p === 'openai' ? 'OPENAI_API_KEY' : 'OPENROUTER_API_KEY'
 }
 

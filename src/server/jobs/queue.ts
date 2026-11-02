@@ -152,6 +152,13 @@ export async function recoverStaleJobs(staleAfterMs = 5 * 60_000): Promise<numbe
   return rows.length
 }
 
+/** Logging must never break a job (e.g. the job row was deleted while running): failures go to stderr. */
 export async function jobLog(jobId: string | null, level: 'debug' | 'info' | 'warn' | 'error', message: string, data?: unknown) {
-  await sql()`insert into job_logs (job_id, level, message, data) values (${jobId}, ${level}, ${message.slice(0, 2000)}, ${data === undefined ? null : sql().json(data as never)})`
+  try {
+    await sql()`insert into job_logs (job_id, level, message, data)
+      select ${jobId}, ${level}, ${message.slice(0, 2000)}, ${data === undefined ? null : sql().json(data as never)}
+      where ${jobId}::uuid is null or exists (select 1 from automation_jobs where id = ${jobId})`
+  } catch (e) {
+    console.error(`[job-log] ${(e as Error).message}`)
+  }
 }

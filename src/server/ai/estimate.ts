@@ -9,6 +9,7 @@ const FOOTPRINT: Record<TaskKind, { input: number; output: number }> = {
   reply_classification: { input: 900, output: 350 },
   reply_draft: { input: 1200, output: 600 },
   analysis: { input: 1500, output: 800 },
+  assistant: { input: 2500, output: 400 },
 }
 
 /** Cost estimate shown before bulk operations. Thinking tokens are billed as output: a 1.5x margin is applied. */

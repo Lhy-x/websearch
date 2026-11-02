@@ -1,7 +1,7 @@
 import type { Settings } from '../core/settings'
 
 export type Provider = 'anthropic' | 'openai' | 'openrouter'
-export type TaskKind = 'site_generation' | 'proposal' | 'reply_classification' | 'reply_draft' | 'analysis'
+export type TaskKind = 'site_generation' | 'proposal' | 'reply_classification' | 'reply_draft' | 'analysis' | 'assistant'
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 
 /** USD per 1M tokens (Anthropic first-party list prices). */
@@ -50,7 +50,7 @@ export function chooseModel(ai: Settings['ai'], task: TaskKind): ModelChoice | n
       effort = strongTask ? 'medium' : 'low'
   }
   if (!model) return null
-  const maxTokens = task === 'site_generation' ? 16000 : task === 'reply_classification' ? 2000 : 8000
+  const maxTokens = task === 'site_generation' ? 16000 : task === 'reply_classification' || task === 'assistant' ? 2000 : 8000
   return { provider: ai.provider, model, effort, maxTokens }
 }
 

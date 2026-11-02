@@ -38,7 +38,7 @@ export async function executeJob(job: Job, workerId: string): Promise<'COMPLETED
     await jobLog(job.id, 'info', 'Terminé')
     return 'COMPLETED'
   } catch (e) {
-    const state = await failJob(job, e)
+    const state = await failJob(job, e).catch(() => 'FAILED' as const)
     await jobLog(job.id, 'error', `${state === 'RETRYING' ? 'Échec temporaire, nouvelle tentative planifiée' : 'Échec définitif'} : ${errorMessage(e)}`)
     return state
   } finally {
@@ -63,7 +63,8 @@ export class Worker {
       void run()
       this.timers.push(setInterval(run, ms))
     }
-    every(15_000, () => db`update worker_heartbeats set last_seen_at = now(), info = info || ${db.json({ running: this.running.size })} where worker_id = ${this.id}`)
+    every(15_000, () => db`insert into worker_heartbeats (worker_id, hostname, pid, info) values (${this.id}, ${hostname()}, ${process.pid}, ${db.json({ concurrency: this.concurrency(), running: this.running.size })})
+             on conflict (worker_id) do update set last_seen_at = now(), info = excluded.info`)
     every(30_000, async () => {
       if ((await getFlags()).globalPause) return
       await fireDueSchedules()
@@ -102,7 +103,9 @@ export class Worker {
         await sleep(this.opts.pollMs ?? 1000)
         continue
       }
-      const p = executeJob(job, this.id).finally(() => this.running.delete(p))
+      const p = executeJob(job, this.id)
+        .catch((e) => console.error(`[worker] tâche ${job.id} : ${errorMessage(e)}`))
+        .finally(() => this.running.delete(p))
       this.running.add(p)
     }
     await Promise.all(this.running)

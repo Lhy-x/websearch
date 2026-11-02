@@ -80,3 +80,12 @@ describe('persistent job queue', () => {
     expect(n).toBe(1)
   })
 })
+
+describe('worker robustness', () => {
+  it('a job deleted while running does not throw (logs and state updates are best-effort)', async () => {
+    const { job } = await enqueueJob('maintenance.cleanup', {})
+    const claimed = (await claimJob('w'))!
+    await sql()`delete from automation_jobs where id = ${job.id}`
+    await expect(executeJob(claimed, 'w')).resolves.toBeDefined()
+  })
+})

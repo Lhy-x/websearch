@@ -6,6 +6,7 @@ import { recomputeBusiness } from '../business/recompute'
 import { extractPage, type PageExtract } from './html-extract'
 import { checkMx } from './mx'
 import type { PresenceEvidence } from './presence'
+import { checkGooglePresence } from './google-presence'
 
 export interface CrawlResult {
   url: string
@@ -98,6 +99,14 @@ export async function enrichBusiness(businessId: string, opts: { allowPrivate?: 
   const db = sql()
   const [b] = await db<{ website_url: string | null }[]>`select website_url from businesses where id = ${businessId}`
   if (!b) throw new Error('Prospect introuvable')
+  // 1) live check first: it may reveal a website the open data didn't list
+  let googleEvidence: PresenceEvidence | null = null
+  let googleError: string | null = null
+  try {
+    googleEvidence = await checkGooglePresence(businessId)
+  } catch (e) {
+    googleError = (e as Error).message
+  }
   const websites = await db<{ normalized_value: string }[]>`
     select normalized_value from business_contacts where business_id = ${businessId} and kind = 'website' and status <> 'INVALID'`
   const own = websites.map((w) => w.normalized_value).filter((w) => !isThirdPartyHost(w))
@@ -109,14 +118,16 @@ export async function enrichBusiness(businessId: string, opts: { allowPrivate?: 
   }
   const emails = await verifyEmails(businessId)
   const now = new Date().toISOString()
-  const evidence: PresenceEvidence = own.length
-    ? { source: 'crawl', at: now, live: true, finding: crawls.some((c) => c.reachable) ? 'website_listed' : 'no_website', detail: crawls.map((c) => `${c.url} → ${c.status ?? c.error}`).join('; ') }
-    : { source: 'crawl', at: now, live: false, finding: 'no_website', detail: 'Aucun site propre référencé par les sources' }
-  // a crawl only counts as a "live" negative check if a website was actually tried and failed
+  // Only record observations that were actually made: "nothing to crawl" is not evidence of anything.
+  const fresh: PresenceEvidence[] = []
+  if (own.length) fresh.push({ source: 'crawl', at: now, live: true, finding: crawls.some((c) => c.reachable) ? 'website_listed' : 'no_website', detail: crawls.map((c) => `${c.url} → ${c.status ?? c.error}`).join('; ') })
+  if (googleEvidence) fresh.push(googleEvidence)
+  const replaced = fresh.map((e) => e.source)
   await db`update businesses set enriched_at = now(), web_presence_checked_at = now(),
              pipeline_status = case when pipeline_status in ('NEW','DISCOVERED') then 'ENRICHED' else pipeline_status end,
-             web_presence_evidence = coalesce((select jsonb_agg(e) from jsonb_array_elements(web_presence_evidence) e where e->>'source' <> 'crawl'), '[]'::jsonb) || ${db.json([evidence] as never)}
+             web_presence_evidence = coalesce((select jsonb_agg(e) from jsonb_array_elements(web_presence_evidence) e
+                                               where not (e->>'source' = any(${replaced})) and e->>'source' <> 'crawl'), '[]'::jsonb) || ${db.json(fresh as never)}
            where id = ${businessId}`
   const r = await recomputeBusiness(businessId)
-  return { crawls, emails, presence: r?.presence, score: r?.score }
+  return { crawls, emails, google: googleEvidence ? googleEvidence.finding : googleError ? `erreur : ${googleError}` : 'non configuré ou non trouvé', presence: r?.presence, score: r?.score }
 }

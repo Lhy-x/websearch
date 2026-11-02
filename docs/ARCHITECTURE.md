@@ -51,6 +51,7 @@
 - `proposals/`, `campaigns/`, `email/` : rédaction, séquences, envoi atomique, événements, réponses entrantes, suppression.
 - `jobs/` : file, handlers, runner, planifications, sauvegardes.
 - `analytics/` : requêtes du dashboard et des analytics.
+- `assistant/` : registre d'outils (`tools.ts`, entrées Zod, `read` / `action`), planification par IA (tool use, `ai-plan.ts`) ou par règles (`rules.ts`), orchestration (`service.ts`). Le modèle ne fait que **planifier** : les résultats affichés viennent toujours de l'exécution des outils, jamais du texte du modèle ; les actions sont prévisualisées puis exécutées sur confirmation.
 
 ## Données
 

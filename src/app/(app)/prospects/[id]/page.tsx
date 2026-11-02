@@ -55,19 +55,18 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
             </CardBody>
             <div className="border-t border-border">
               <Table>
-                <thead><tr><Th>Type</Th><Th>Valeur</Th><Th>Source</Th><Th>Statut</Th><Th>Récupéré</Th><Th>Vérifié</Th><Th /></tr></thead>
+                <thead><tr><Th>Type</Th><Th>Valeur</Th><Th>Source</Th><Th>Statut</Th><Th>Récupéré / vérifié</Th><Th /></tr></thead>
                 <tbody>
                   {(d.contacts as unknown as { id: string; kind: string; value: string; normalized_value: string; label: string | null; source: string; source_url: string | null; status: string; mx_valid: boolean | null; is_role_account: boolean | null; is_primary: boolean; opted_out: boolean; retrieved_at: Date; verified_at: Date | null }[]).map((c) => (
                     <tr key={c.id}>
                       <Td className="text-xs text-muted">{c.kind}{c.label ? ` · ${c.label}` : ''}{c.is_primary ? ' ★' : ''}</Td>
-                      <Td className="max-w-[260px] truncate text-xs">{c.kind === 'phone' ? formatPhone(c.normalized_value) : c.normalized_value}{c.opted_out ? <Badge tone="danger" className="ml-1">opposition</Badge> : null}</Td>
+                      <Td className="max-w-[220px] truncate text-xs" title={c.normalized_value}>{c.kind === 'phone' ? formatPhone(c.normalized_value) : c.normalized_value}{c.opted_out ? <Badge tone="danger" className="ml-1">opposition</Badge> : null}</Td>
                       <Td className="text-xs">{c.source_url ? <a className="text-primary" href={c.source_url} target="_blank" rel="noopener noreferrer nofollow">{c.source}</a> : c.source}</Td>
                       <Td className="text-xs">
                         <EmailBadge status={c.status} />
                         {c.kind === 'email' ? <span className="ml-1 text-muted">MX : {c.mx_valid === null ? 'non testé' : c.mx_valid ? 'ok' : 'absent'}</span> : null}
                       </Td>
-                      <Td className="text-xs text-muted">{fmtDate(c.retrieved_at, false)}</Td>
-                      <Td className="text-xs text-muted">{c.verified_at ? fmtDate(c.verified_at, false) : '—'}</Td>
+                      <Td className="whitespace-nowrap text-xs text-muted">{fmtDate(c.retrieved_at, false)}<br />{c.verified_at ? fmtDate(c.verified_at, false) : 'non vérifié'}</Td>
                       <Td><ContactActions businessId={b.id} contactId={c.id} status={c.status} /></Td>
                     </tr>
                   ))}

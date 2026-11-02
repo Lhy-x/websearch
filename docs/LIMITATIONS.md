@@ -10,7 +10,8 @@ règles), mais **n'a pas pu être exécuté contre le vrai service** :
 
 - API Recherche d'entreprises (Sirene), Overpass (OSM), Google Places, géocodage api-adresse / Nominatim
   (la table de villes intégrée a servi de repli) ;
-- fournisseurs IA (Anthropic, OpenAI, OpenRouter) — aucune clé disponible : la génération déterministe a été utilisée ;
+- fournisseurs IA (Anthropic, OpenAI, OpenRouter) — aucune clé disponible : la génération déterministe et l'assistant par règles ont été utilisés ;
+- Google Places réel (la vérification de présence en direct est testée avec une réponse Places simulée, clairement identifiée comme donnée de test) ;
 - envoi réel via Resend / SMTP, synchronisation IMAP, webhook Resend réel (la vérification de signature Svix est testée) ;
 - vérification MX / SPF / DKIM / DMARC (pas de DNS sortant : statut « non testé », jamais « invalide ») ;
 - crawl et audit de sites de prospects réels (vérifiés sur un serveur HTTP local) ;
@@ -21,7 +22,7 @@ de test (Paramètres → Prospection) et une génération IA.
 
 ## Fonctionnalités absentes ou partielles
 
-- **Agent IA d'assistance** (§26 G) : non implémenté.
+- **Assistant** (§26 G) : 7 outils (recherche, liste, génération de démos, préparation de campagne en brouillon, performance des campagnes, conversations à traiter, pipeline). Il ne peut ni envoyer d'emails ni activer une campagne (volontaire). Sans IA, l'interprétation par règles couvre les formulations courantes en français uniquement. Le mode IA (tool use Anthropic / OpenAI) n'a pas été exécuté faute de clé.
 - **Lighthouse** : non intégré (l'audit Playwright maison couvre HTTPS, mobile, SEO de base, CTA, liens cassés, erreurs JS).
 - **Suivi des ouvertures d'email** : volontairement non activé (métrique imparfaite) ; seules les vues des démos sont comptées (hors robots et hors administrateur connecté).
 - **Publication automatique vers un hébergement / domaine client** : non implémentée ; l'export ZIP statique est prêt à déposer sur n'importe quel hébergement.

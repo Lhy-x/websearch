@@ -31,7 +31,7 @@ Activation par défaut : Paramètres → Recherche. Chaque recherche affiche l'�
 
 ## Enrichissement
 
-Par prospect (job `business.enrich`) : crawl du site officiel (accueil + 3 pages contact/mentions/à propos, sans soumission de formulaire), emails (y compris `[at]`/`[dot]`), réseaux sociaux, téléphones ; vérification syntaxe + MX (si DNS disponible) ; observation de présence ; audit Playwright si un site existe ; recalcul du score.
+Par prospect (job `business.enrich`) : **vérification en direct Google Places** si une clé est configurée (la fiche Google doit correspondre au prospect — nom, position, téléphone ; « absent de Google » n'est jamais une preuve ; seul le place_id est conservé ; coût estimé enregistré dans `api_usage`), crawl du site officiel (accueil + 3 pages contact/mentions/à propos, sans soumission de formulaire), emails (y compris `[at]`/`[dot]`), réseaux sociaux, téléphones ; vérification syntaxe + MX (si DNS disponible) ; observation de présence ; audit Playwright si un site existe ; recalcul du score.
 
 ## Ajouter un connecteur
 

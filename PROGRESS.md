@@ -24,9 +24,12 @@ _Dernière mise à jour : 2026-11-02._
 | Désinscription / opposition / rebond → suppression globale | intégration |
 | File de tâches : idempotence, concurrence, backoff, reprise après crash, planifications | intégration |
 | Sauvegarde `pg_dump` | exécutée (fichier .sql.gz produit) |
+| Assistant (§26 G) : 5 exemples du cahier des charges compris, lecture immédiate, actions sur confirmation | tests unitaires du parseur + intégration + E2E (recherche lancée depuis l'assistant puis exécutée par le worker sur Overture) |
+| Vérification de présence en direct (Google Places) pendant l'enrichissement | intégration avec réponse Places simulée (absence confirmée, site découvert, résultat sans rapport ignoré, sans clé → jamais confirmé) |
+| Robustesse du worker (tâche supprimée pendant son exécution) | test d'intégration + E2E (le bug faisait tomber le worker, corrigé) |
 | Coûts API suivis | `api_usage` alimenté par chaque appel IA (non exercé faute de clé) |
 
-Commandes : `npm test` (81 tests), `npm run test:e2e` (parcours de référence, ~1 min), `npm run typecheck`.
+Commandes : `npm test` (97 tests), `npm run test:e2e` (parcours de référence, assistant, rendu de toutes les pages ; quelques minutes), `npm run typecheck`.
 
 ## Partiel / non vérifiable ici
 
@@ -79,8 +82,7 @@ npm test && npm run test:e2e
 
 ## Prochaines tâches prioritaires
 
-1. Sur votre machine : configurer une clé IA, Resend (ou SMTP) + IMAP, puis valider un envoi réel vers votre propre adresse et une génération IA.
+1. Sur votre machine : configurer une clé IA, Resend (ou SMTP) + IMAP, puis valider un envoi réel vers votre propre adresse, une génération IA et l'assistant en mode IA.
 2. Index local des localités Overture (thème *divisions*) pour un géocodage hors ligne complet.
-3. Agent IA d'assistance (§26 G) branché sur les fonctions serveur existantes, avec confirmation des actions sensibles.
-4. Adaptateur de stockage S3/Supabase et publication sur hébergement/domaine client.
-5. Intégration Lighthouse optionnelle dans l'audit.
+3. Adaptateur de stockage S3/Supabase et publication sur hébergement/domaine client.
+4. Intégration Lighthouse optionnelle dans l'audit.

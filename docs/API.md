@@ -51,6 +51,8 @@ Erreurs : `{ "error": string, "code"?: string, "issues"?: [{ path, message }] }`
 | POST | `/api/automation` | `flags` (pause globale, arrêt d'urgence), `schedule_create|toggle|delete`, `enqueue`, `retry_failed` |
 | GET/POST | `/api/jobs/:id[?action=cancel|retry]` | Tâche + journaux |
 | GET/PUT/POST | `/api/settings` | Réglages ; `secret`, `offer_save`, `strategy_save|delete`, `suppress|unsuppress`, `test_email`, `dns_check` |
+| POST | `/api/assistant` | `{ message, selection? }` → plan : étapes `read` exécutées, étapes `action` en attente de confirmation (`{ interpreter, note, steps[] }`) |
+| POST | `/api/assistant/execute` | `{ tool, input }` — exécute une action confirmée (entrée revalidée côté serveur) |
 | GET | `/api/estimate?task=&count=` | Estimation de coût IA avant une opération en lot |
 | GET | `/api/connectors` | État des connecteurs |
 | GET | `/api/health` (public) | Santé (BD) |

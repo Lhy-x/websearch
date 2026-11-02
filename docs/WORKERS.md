@@ -28,6 +28,11 @@ vérifient régulièrement si elles ont été annulées).
 `search.run`, `business.enrich`, `business.audit`, `website.generate`, `website.capture`, `proposal.generate`,
 `campaign.tick`, `campaign.autofill`, `email.send`, `inbox.sync`, `import.run`, `maintenance.cleanup`, `backup.run`.
 
+## Robustesse
+
+- Une tâche supprimée pendant son exécution (ou dont le prospect est supprimé) ne fait pas tomber le worker : journalisation et mises à jour d'état sont tolérantes, et le processus journalise les rejets non gérés au lieu de s'arrêter.
+- Le heartbeat du worker est une insertion idempotente : il réapparaît même si la table a été vidée.
+
 ## Garde-fous
 
 - **Pause globale** et **arrêt d'urgence des envois** (Automatisations) — pris en compte immédiatement.

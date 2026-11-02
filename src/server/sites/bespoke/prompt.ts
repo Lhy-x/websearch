@@ -68,10 +68,11 @@ ${
 }`
 }
 
-export function buildRevisionPrompt(html: string, f: BusinessFacts, opts: { issues?: QualityIssue[]; instruction?: string | null }): string {
+export function buildRevisionPrompt(html: string, f: BusinessFacts, opts: { issues?: QualityIssue[]; instruction?: string | null; visual?: boolean }): string {
   return `Voici la version actuelle du site de « ${f.name} ». Produis une version corrigée complète (même format de réponse : plan de design mis à jour + HTML complet).
 ${opts.instruction ? `\nDEMANDE DE L'UTILISATEUR (prioritaire, dans le respect des règles) : ${opts.instruction}\n` : ''}
 ${opts.issues?.length ? `\nPROBLÈMES DÉTECTÉS AUTOMATIQUEMENT À CORRIGER (mesures réelles, rendu Chromium et vérification des faits) :\n${opts.issues.map((i) => `- [${i.severity}] ${i.message}`).join('\n')}\n` : ''}
+${opts.visual ? `\nCAPTURES JOINTES : rendu réel de la version actuelle — (1) ordinateur 1440 px, (2) mobile 390 px. Fais la critique d'un directeur artistique exigeant : hiérarchie, rythme vertical, espaces vides involontaires, alignements, artefacts visuels, contrastes, lisibilité et confort sur mobile, cohérence avec le plan et avec le métier. Corrige ce qui est faible ; ce qui est déjà excellent ne doit pas changer. Puis, comme le conseille le guide, retire un accessoire.\n` : ''}
 Garde ce qui fonctionne ; ne régresse pas sur le reste. Coordonnées et faits : uniquement ceux du dossier :
 ${JSON.stringify({ nom: f.name, telephone_affiche: f.phoneDisplay, telephone_lien: f.phoneE164 ? `tel:${f.phoneE164}` : null, email: f.email, adresse: f.address, ville: f.city, horaires: f.openingHours, annee_de_creation_sirene: f.creationYear ?? null })}
 

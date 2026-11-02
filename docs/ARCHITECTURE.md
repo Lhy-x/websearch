@@ -53,6 +53,30 @@
 - `analytics/` : requêtes du dashboard et des analytics.
 - `assistant/` : registre d'outils (`tools.ts`, entrées Zod, `read` / `action`), planification par IA (tool use, `ai-plan.ts`) ou par règles (`rules.ts`), orchestration (`service.ts`). Le modèle ne fait que **planifier** : les résultats affichés viennent toujours de l'exécution des outils, jamais du texte du modèle ; les actions sont prévisualisées puis exécutées sur confirmation.
 
+## IA par abonnement et sites « sur mesure »
+
+**Fournisseurs par abonnement** (`src/server/ai/cli.ts`) : `claude-code` exécute `claude -p --output-format json --tools "" --json-schema …`
+(Claude Pro/Max, connexion OAuth du CLI — `--bare` n'est jamais utilisé car il désactive cette connexion) ; `codex` exécute
+`codex exec --sandbox read-only --ephemeral --output-schema … -o …` (ChatGPT). Aucun outil n'est donné au modèle, le
+répertoire de travail est un dossier temporaire vide, la sortie est contrainte par schéma puis revalidée par Zod. Coût
+enregistré : 0 $ ; garde-fou : nombre d'appels par jour (Paramètres → IA).
+
+**Génération sur mesure** (`src/server/sites/bespoke/`) :
+
+```
+faits vérifiés (+ texte publié sur le site actuel, horaires, réseaux, année Sirene…)
+   └─ prompt = guide anthropics/skills « frontend-design » (Apache-2.0, vendor/) + règles non négociables
+        └─ IA : plan de design (palette, typo, layout, signature, révisions) + HTML complet sans JS
+             └─ sanitisation (allowlist : pas de script/formulaire/iframe hors OSM/image non licenciée)
+                  └─ contrôles de faits (téléphone/email inventés, affirmations, H1, nom…)
+                       └─ rendu mesuré dans Chromium 390 px et 1440 px (débordement, texte minuscule, cibles tactiles)
+                            └─ passe(s) de correction alimentée(s) par les problèmes mesurés (0–3, réglable)
+                                 └─ rejet si une information inventée subsiste (mode auto : repli sur un template)
+```
+
+Le bandeau « Démonstration non officielle », le `noindex` et la mention de démonstration sont ajoutés par
+l'application, jamais laissés au modèle. L'aperçu public envoie en plus une CSP sans `script-src`.
+
 ## Données
 
 Schéma : `db/migrations/0001_init.sql` (+ 0002, 0003). Points clés :

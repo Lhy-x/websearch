@@ -10,7 +10,7 @@ import { bespokeOutputSchema, htmlSiteSchema, isHtmlSite, type BespokeOutput, ty
 import { BESPOKE_SYSTEM, buildBespokePrompt, buildRevisionPrompt } from './prompt'
 import { sanitizeSiteHtml } from './sanitize'
 import { checkAgainstFacts } from './checks'
-import { measureRendered } from './measure'
+import { captureForReview, measureRendered } from './measure'
 
 export const BESPOKE_TEMPLATE_ID = 'sur-mesure'
 
@@ -29,30 +29,40 @@ export interface PipelineResult {
  * the measured problems. Critical problems (invented contact data or claims) that survive all passes
  * abort the generation: such a site is never published.
  */
-export async function runBespokePipeline(input: { facts: BusinessFacts; prompt: string; mediaUrls: string[]; passes: number; measure?: boolean; jobId?: string | null; log?: (m: string) => Promise<void> | void }): Promise<PipelineResult> {
-  const call = (prompt: string) =>
-    generateStructured({ task: 'site_bespoke', system: BESPOKE_SYSTEM, instructions: prompt, schema: bespokeOutputSchema, businessId: input.facts.businessId, jobId: input.jobId })
+export async function runBespokePipeline(input: { facts: BusinessFacts; prompt: string; mediaUrls: string[]; passes: number; visualReview?: boolean; measure?: boolean; jobId?: string | null; log?: (m: string) => Promise<void> | void }): Promise<PipelineResult> {
+  const call = (prompt: string, images?: { mediaType: 'image/jpeg'; data: string }[]) =>
+    generateStructured({ task: 'site_bespoke', system: BESPOKE_SYSTEM, instructions: prompt, schema: bespokeOutputSchema, images, businessId: input.facts.businessId, jobId: input.jobId })
   const evaluate = async (html: string) => {
     const s = sanitizeSiteHtml(html, input.mediaUrls)
     const factIssues = checkAgainstFacts(s.html, input.facts)
     const rendered = input.measure === false ? [] : await measureRendered(s.html)
     return { ...s, issues: [...factIssues, ...rendered] }
   }
+  // lower is better: a pass that regresses never replaces a better candidate
+  const weight = (issues: QualityIssue[]) => issues.reduce((s, i) => s + (i.severity === 'critical' ? 100 : i.severity === 'major' ? 10 : 1), 0)
   await input.log?.('Conception du site (plan de design + HTML)…')
   let r = await call(input.prompt)
   let cost = r.costUsd
   let ev = await evaluate(r.data.html)
+  let best = { r, ev }
   let passes = 0
-  while (passes < input.passes && ev.issues.some((i) => i.severity !== 'minor')) {
+  let visualDone = false
+  while (passes < input.passes) {
+    const needFix = ev.issues.some((i) => i.severity !== 'minor')
+    const doVisual = !!input.visualReview && !visualDone
+    if (!needFix && !doVisual) break
     passes++
-    await input.log?.(`Correction automatique ${passes}/${input.passes} : ${ev.issues.filter((i) => i.severity !== 'minor').length} problème(s)`)
-    r = await call(buildRevisionPrompt(ev.html, input.facts, { issues: ev.issues }))
+    const images = input.visualReview ? await captureForReview(ev.html).catch(() => undefined) : undefined
+    if (images) visualDone = true
+    await input.log?.(`Passe ${passes}/${input.passes} : ${needFix ? `${ev.issues.filter((i) => i.severity !== 'minor').length} problème(s) à corriger` : 'critique visuelle des captures'}${images ? ' (avec captures)' : ''}`)
+    r = await call(buildRevisionPrompt(ev.html, input.facts, { issues: ev.issues, visual: !!images }), images)
     cost += r.costUsd
     ev = await evaluate(r.data.html)
+    if (weight(ev.issues) <= weight(best.ev.issues)) best = { r, ev }
   }
-  const critical = ev.issues.filter((i) => i.severity === 'critical')
+  const critical = best.ev.issues.filter((i) => i.severity === 'critical')
   if (critical.length) throw new AppError(`Site rejeté (informations non vérifiées) : ${critical.map((i) => i.message).join(' ; ').slice(0, 600)}`, 422, 'BESPOKE_REJECTED')
-  return { output: r.data, html: ev.html, removed: ev.removed, issues: ev.issues, passes, model: r.model, costUsd: cost }
+  return { output: best.r.data, html: best.ev.html, removed: best.ev.removed, issues: best.ev.issues, passes, model: best.r.model, costUsd: cost }
 }
 
 export async function generateBespokeWebsite(businessId: string, opts: { styleHint?: string | null; jobId?: string | null; log?: (m: string) => Promise<void> | void } = {}) {
@@ -69,7 +79,7 @@ export async function generateBespokeWebsite(businessId: string, opts: { styleHi
     returning id`
   const websiteId = site!.id
   try {
-    const r = await runBespokePipeline({ facts, prompt: buildBespokePrompt(facts, { styleHint: opts.styleHint, customInstructions: settings.ai.customSiteInstructions }), mediaUrls: [], passes: settings.sites.qualityPasses, jobId: opts.jobId, log: opts.log })
+    const r = await runBespokePipeline({ facts, prompt: buildBespokePrompt(facts, { styleHint: opts.styleHint, customInstructions: settings.ai.customSiteInstructions }), mediaUrls: [], passes: settings.sites.qualityPasses, visualReview: settings.sites.visualReview, jobId: opts.jobId, log: opts.log })
     const version: HtmlSite = htmlSiteSchema.parse({ schemaVersion: 1, kind: 'html', html: r.html, designPlan: r.output.designPlan, businessName: facts.name, media: [], report: { passes: r.passes, issues: r.issues, removed: r.removed } })
     await db`insert into website_versions (website_id, version, config, created_by, note)
              values (${websiteId}, 1, ${db.json(version as never)}, 'ai', ${`Sur mesure — ${r.passes} correction(s), ${r.issues.length} remarque(s) restante(s)`})`
@@ -94,7 +104,7 @@ export async function reviseBespokeWebsite(websiteId: string, instruction: strin
   if (!current.success || !isHtmlSite(current.data)) throw new AppError('Ce site n’est pas un site « sur mesure »', 400)
   const facts = await loadBusinessFacts(w.business_id)
   const settings = await getSettings()
-  const r = await runBespokePipeline({ facts, prompt: buildRevisionPrompt(current.data.html, facts, { instruction }), mediaUrls: current.data.media.map((m) => m.url), passes: settings.sites.qualityPasses, jobId: opts.jobId, log: opts.log })
+  const r = await runBespokePipeline({ facts, prompt: buildRevisionPrompt(current.data.html, facts, { instruction }), mediaUrls: current.data.media.map((m) => m.url), passes: settings.sites.qualityPasses, visualReview: false, jobId: opts.jobId, log: opts.log })
   const next = w.current_version + 1
   const version: HtmlSite = { ...current.data, html: r.html, designPlan: r.output.designPlan, report: { passes: r.passes, issues: r.issues, removed: r.removed } }
   await db.begin(async (tx) => {

@@ -5,9 +5,11 @@ import { sql } from '../core/db'
 import { AppError, NotConfiguredError, TransientError, errorMessage } from '../core/errors'
 import { getSecret, getSettings } from '../core/settings'
 import { chooseModel, estimateMaxCostUsd, isSubscription, priceUsd, type ModelChoice, type Provider, type TaskKind } from './models'
-import { callCli, cliStatus, type CliProvider } from './cli'
+import { callCli, cliStatus, type CliProvider, type ImageInput } from './cli'
 
 export interface StructuredRequest<T extends z.ZodType> {
+  /** screenshots for visual review */
+  images?: ImageInput[]
   task: TaskKind
   system: string
   /** Trusted instructions (ours). */
@@ -104,7 +106,7 @@ async function callAnthropic<T extends z.ZodType>(c: ModelChoice, apiKey: string
       model: c.model,
       max_tokens: c.maxTokens,
       system: req.system,
-      messages: [{ role: 'user', content: user }],
+      messages: [{ role: 'user', content: req.images?.length ? [{ type: 'text' as const, text: user }, ...req.images.map((i) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: i.mediaType, data: i.data } }))] : user }],
       output_config: { format: betaZodOutputFormat(req.schema), effort: c.effort },
       ...(useFallbacks ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
     })
@@ -135,7 +137,7 @@ async function callOpenAICompatible<T extends z.ZodType>(c: ModelChoice, apiKey:
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: `${req.system}\nRéponds uniquement avec un objet JSON conforme à ce JSON Schema : ${schemaHint}` },
-        { role: 'user', content: user },
+        { role: 'user', content: req.images?.length ? [{ type: 'text', text: user }, ...req.images.map((i) => ({ type: 'image_url', image_url: { url: `data:${i.mediaType};base64,${i.data}` } }))] : user },
       ],
       ...(c.provider === 'openrouter' ? { usage: { include: true } } : {}),
     }),
@@ -200,6 +202,7 @@ async function generateWithCli<T extends z.ZodType>(choice: ModelChoice, req: St
         system: req.system,
         prompt: attempt ? `${user}\n\nATTENTION : ta réponse précédente ne respectait pas le schéma JSON demandé.` : user,
         schema: req.schema,
+        images: req.images,
         effort: choice.effort,
         timeoutMs: req.task === 'site_bespoke' ? 15 * 60_000 : 5 * 60_000,
       })

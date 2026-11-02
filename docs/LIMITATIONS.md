@@ -20,6 +20,9 @@ règles), mais **n'a pas pu être exécuté contre le vrai service** :
 À faire en premier sur votre machine : renseigner les clés, puis lancer une recherche avec Sirene activé, un email
 de test (Paramètres → Prospection) et une génération IA.
 
+- **Abonnements Claude / ChatGPT** : l'intégration passe par les CLI officiels (`claude`, `codex`), qui doivent être installés et connectés **sur la machine du worker**. Testée avec des doubles de test (arguments, schémas, erreurs « non connecté » / « limite atteinte ») ; les limites d'usage de votre forfait s'appliquent (le worker réessaie plus tard). En Docker, le worker n'a pas votre connexion : lancez-le en natif sur votre Mac ou montez `~/.claude` / `~/.codex`.
+- **Qualité des sites sur mesure** : dépend du modèle utilisé (Opus recommandé). Les contrôles automatiques garantissent l'absence de faits inventés et un rendu mobile correct, pas le goût : relisez avant d'envoyer.
+
 ## Fonctionnalités absentes ou partielles
 
 - **Assistant** (§26 G) : 7 outils (recherche, liste, génération de démos, préparation de campagne en brouillon, performance des campagnes, conversations à traiter, pipeline). Il ne peut ni envoyer d'emails ni activer une campagne (volontaire). Sans IA, l'interprétation par règles couvre les formulations courantes en français uniquement. Le mode IA (tool use Anthropic / OpenAI) n'a pas été exécuté faute de clé.

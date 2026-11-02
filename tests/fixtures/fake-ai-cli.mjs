@@ -43,7 +43,15 @@ if (flavour === 'claude') {
     process.exit(1)
   }
   const out = nextResponse()
-  console.log(JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: '', structured_output: out, usage: { input_tokens: 1200, output_tokens: 3400 }, modelUsage: { 'claude-test-double': {} }, total_cost_usd: 0.42 }))
+  const result = { type: 'result', subtype: 'success', is_error: false, result: '', structured_output: out, usage: { input_tokens: 1200, output_tokens: 3400 }, modelUsage: { 'claude-test-double': {} }, total_cost_usd: 0.42 }
+  if (argv.includes('--input-format')) {
+    // stream-json: a user message with content blocks (text + images) in, event lines out
+    const msg = JSON.parse(stdin.trim().split('\n')[0])
+    const images = msg.message.content.filter((b) => b.type === 'image').length
+    if (process.env.FAKE_CLI_LOG) appendFileSync(process.env.FAKE_CLI_LOG, JSON.stringify({ flavour, images }) + '\n')
+    console.log(JSON.stringify({ type: 'system', subtype: 'init' }))
+    console.log(JSON.stringify(result))
+  } else console.log(JSON.stringify(result))
   process.exit(0)
 }
 // codex

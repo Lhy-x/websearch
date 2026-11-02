@@ -43,6 +43,13 @@ des transactions classiques, compatibles). Les migrations activent RLS sur toute
 clés `anon`/`authenticated` de Supabase n'ont aucun accès ; seul le serveur (rôle propriétaire) lit et écrit.
 Ne jamais exposer la clé `service_role` ni `DATABASE_URL` au navigateur (aucune variable `NEXT_PUBLIC_*` n'est utilisée).
 
+## IA par abonnement (sans clé API)
+
+Le worker appelle `claude` (Claude Pro/Max) ou `codex` (ChatGPT) avec **votre** connexion : il doit tourner sur une
+machine où vous avez fait `claude auth login` / `codex login` (typiquement votre Mac). Sur un VPS : installez le CLI et
+connectez-vous une fois en SSH. Avec Docker Compose : lancez plutôt le worker en natif (`npm run worker`), ou montez
+le dossier de configuration (`~/.claude`, `~/.codex`) dans le conteneur du worker.
+
 ## Email
 
 - `EMAIL_PROVIDER=sandbox` (défaut) : aucun envoi, messages enregistrés — signalé dans l'interface.

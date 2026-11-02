@@ -73,6 +73,8 @@ export const settingsSchema = z.object({
       generationMode: z.enum(['bespoke', 'template']).default('bespoke'),
       /** automatic review/correction passes after a bespoke generation (rendered checks in Chromium) */
       qualityPasses: z.number().int().min(0).max(3).default(1),
+      /** the model looks at real screenshots of its site and refines it (one extra call) */
+      visualReview: z.boolean().default(true),
       demoDisclaimer: z
         .string()
         .default("Démonstration indépendante réalisée à titre de proposition. Ce site n'est pas le site officiel de l'établissement."),

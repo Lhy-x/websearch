@@ -42,7 +42,7 @@ beforeEach(async () => {
   process.env.CLAUDE_CLI_PATH = path.join(FIX, 'fake-claude')
   process.env.CODEX_CLI_PATH = path.join(FIX, 'fake-codex')
   delete process.env.FAKE_CLI_MODE
-  await updateSettings({ ai: { provider: 'claude-code' }, sites: { qualityPasses: 1 } })
+  await updateSettings({ ai: { provider: 'claude-code' }, sites: { qualityPasses: 1, visualReview: false } })
   await cliStatus('claude-code', true)
 })
 afterAll(async () => {
@@ -140,6 +140,22 @@ describe('bespoke site generation (subscription provider)', () => {
     const r = (await HANDLERS['website.generate']({ businessId: id, generator: 'auto' }, ctx)) as { websiteId: string }
     const v = (await getWebsiteVersion(r.websiteId))!
     expect(isHtmlSite(v.config)).toBe(false) // template fallback
+  })
+
+  it('visual review: the model receives real screenshots (desktop + mobile) and refines its site', async () => {
+    await updateSettings({ sites: { visualReview: true } })
+    responses(SITE, SITE.replace('Un salon de quartier', 'Un salon de quartier lumineux'))
+    const { id } = await persistCluster([place])
+    const g = await generateBespokeWebsite(id)
+    expect(g.passes).toBe(1)
+    const log = calls()
+    const imagesLine = log.find((l) => 'images' in l) as unknown as { images: number }
+    expect(imagesLine.images).toBe(2)
+    const second = log.filter((l) => l.argv)[1]!
+    expect(second.argv).toEqual(expect.arrayContaining(['--input-format', 'stream-json']))
+    expect(second.stdin).toContain('CAPTURES JOINTES')
+    const v = (await getWebsiteVersion(g.websiteId))!
+    expect(isHtmlSite(v.config) && v.config.html).toContain('quartier lumineux')
   })
 
   it('revises a bespoke site from a natural-language instruction (new version, checks re-run)', async () => {

@@ -41,6 +41,19 @@ else
   echo ".env existe déjà — inchangé."
 fi
 
+say "IA par abonnement (optionnel)"
+echo "Pour utiliser vos crédits d'abonnement (sans clé API) :"
+read -r -p "Installer/connecter Claude Code (abonnement Claude Pro/Max) ? [o/N] " A
+if [[ "${A:-n}" =~ ^[oOyY] ]]; then
+  command -v claude >/dev/null 2>&1 || npm install -g @anthropic-ai/claude-code
+  claude auth status --json 2>/dev/null | grep -q '"loggedIn": true' || claude auth login
+fi
+read -r -p "Installer/connecter Codex (abonnement ChatGPT) ? [o/N] " B
+if [[ "${B:-n}" =~ ^[oOyY] ]]; then
+  command -v codex >/dev/null 2>&1 || npm install -g @openai/codex
+  codex login status >/dev/null 2>&1 || codex login
+fi
+
 say "5/6 Migrations"
 set -a; . ./.env; set +a
 npm run migrate

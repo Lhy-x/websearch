@@ -100,7 +100,14 @@ export function extractJson(text: string): unknown {
   throw new AppError('Réponse IA non JSON', 422, 'AI_INVALID_OUTPUT')
 }
 
+export interface ImageInput {
+  mediaType: 'image/jpeg' | 'image/png'
+  /** base64 */
+  data: string
+}
+
 export interface CliCall {
+  images?: ImageInput[]
   provider: CliProvider
   model?: string
   system: string
@@ -124,15 +131,22 @@ export async function callCli(c: CliCall): Promise<CliOutput> {
   const timeoutMs = c.timeoutMs ?? 10 * 60_000
   try {
     if (c.provider === 'claude-code') {
-      const args = ['-p', '--output-format', 'json', '--tools', '', '--strict-mcp-config', '--no-session-persistence', '--system-prompt', c.system, '--json-schema', JSON.stringify(jsonSchemaOf(c.schema))]
+      // images (visual review) are sent as content blocks through the stream-json input format: still no tools
+      const withImages = !!c.images?.length
+      const args = ['-p', '--output-format', withImages ? 'stream-json' : 'json', '--tools', '', '--strict-mcp-config', '--no-session-persistence', '--system-prompt', c.system, '--json-schema', JSON.stringify(jsonSchemaOf(c.schema))]
+      if (withImages) args.push('--input-format', 'stream-json', '--verbose')
       if (c.model) args.push('--model', c.model)
       if (c.effort) args.push('--effort', c.effort)
-      const r = await run(cliBinary('claude-code'), args, c.prompt, { cwd: dir, timeoutMs })
+      const input = withImages
+        ? JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'text', text: c.prompt }, ...c.images!.map((i) => ({ type: 'image', source: { type: 'base64', media_type: i.mediaType, data: i.data } }))] } }) + '\n'
+        : c.prompt
+      const r = await run(cliBinary('claude-code'), args, input, { cwd: dir, timeoutMs })
       let out: { is_error?: boolean; result?: string; structured_output?: unknown; total_cost_usd?: number; usage?: { input_tokens?: number; output_tokens?: number }; modelUsage?: Record<string, unknown>; subtype?: string }
       try {
-        out = JSON.parse(r.stdout)
+        const line = withImages ? r.stdout.split('\n').reverse().find((l) => l.includes('"type":"result"')) ?? '' : r.stdout
+        out = JSON.parse(line)
       } catch {
-        throw classifyFailure('claude-code', `${r.stderr} ${r.stdout}`)
+        throw classifyFailure('claude-code', `${r.stderr} ${r.stdout.slice(-2000)}`)
       }
       if (out.is_error || r.code !== 0) throw classifyFailure('claude-code', `${out.result ?? ''} ${r.stderr}`)
       const data = out.structured_output ?? extractJson(out.result ?? '')
@@ -151,6 +165,11 @@ export async function callCli(c: CliCall): Promise<CliOutput> {
     const args = ['exec', '--sandbox', 'read-only', '--skip-git-repo-check', '--ephemeral', '-C', dir, '--output-schema', schemaFile, '-o', outFile]
     if (c.model) args.push('-m', c.model)
     if (c.effort) args.push('-c', `model_reasoning_effort="${c.effort === 'max' || c.effort === 'xhigh' ? 'high' : c.effort}"`)
+    for (const [i, img] of (c.images ?? []).entries()) {
+      const f = path.join(dir, `capture-${i + 1}.${img.mediaType === 'image/png' ? 'png' : 'jpg'}`)
+      await writeFile(f, Buffer.from(img.data, 'base64'))
+      args.push('-i', f)
+    }
     args.push('-')
     const prompt = `${c.system}\n\nN'exécute aucune commande et ne lis aucun fichier : réponds directement avec l'objet JSON demandé.\n\n${c.prompt}`
     const r = await run(cliBinary('codex'), args, prompt, { cwd: dir, timeoutMs })

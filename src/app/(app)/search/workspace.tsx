@@ -129,7 +129,7 @@ export function SearchWorkspace({ defaults, connectors }: { defaults: { country:
                 </Select>
               </Field>
               <Field label="Mots-clés" hint="Filtre sur le nom et la catégorie (séparés par des virgules)"><Input value={form.keywords} onChange={(e) => set('keywords', e.target.value)} placeholder="barbier, coloration" /></Field>
-              <Field label="Sources">
+              <Field group label="Sources">
                 <div className="space-y-1.5">
                   {connectors.map((c) => (
                     <label key={c.id} className="flex items-start gap-2 text-xs">

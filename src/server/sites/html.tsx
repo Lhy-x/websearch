@@ -1,8 +1,23 @@
-import { renderToStaticMarkup } from 'react-dom/server'
+import { createRequire } from 'node:module'
+import type { ReactElement } from 'react'
 import type { SiteConfig } from '@/lib/site/schema'
 import { SiteRenderer } from '@/lib/site/render/SiteRenderer'
 import { SITE_CSS } from '@/lib/site/render/site-css'
 import { googleFontsHref } from '@/lib/site/themes'
+
+/**
+ * Generated sites are standalone HTML documents (no Next runtime, no JS), shared by the public preview,
+ * the editor, ZIP exports and the worker's screenshots. Next's App Router forbids a static import of
+ * react-dom/server, so the renderer is resolved at runtime (Node only — never shipped to the browser).
+ */
+let renderer: ((el: ReactElement) => string) | null = null
+function renderToStaticMarkup(el: ReactElement): string {
+  if (!renderer) {
+    const req = createRequire(import.meta.url)
+    renderer = (req('react-dom/server') as { renderToStaticMarkup: (e: ReactElement) => string }).renderToStaticMarkup
+  }
+  return renderer(el)
+}
 
 function esc(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)

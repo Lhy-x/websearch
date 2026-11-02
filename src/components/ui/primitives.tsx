@@ -22,11 +22,22 @@ export function Label({ className, ...p }: React.LabelHTMLAttributes<HTMLLabelEl
   return <label className={cn('mb-1.5 block text-xs font-medium text-muted', className)} {...p} />
 }
 
-export function Field({ label, hint, children, className }: { label: string; hint?: string; children: React.ReactNode; className?: string }) {
+/** Form field. Wraps a single control in its <label> (accessible name); `group` for multi-control fields. */
+export function Field({ label, hint, children, className, group }: { label: string; hint?: string; children: React.ReactNode; className?: string; group?: boolean }) {
+  if (group)
+    return (
+      <div className={className} role="group" aria-label={label}>
+        <span className="mb-1.5 block text-xs font-medium text-muted">{label}</span>
+        {children}
+        {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
+      </div>
+    )
   return (
     <div className={className}>
-      <Label>{label}</Label>
-      {children}
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-medium text-muted">{label}</span>
+        {children}
+      </label>
       {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
     </div>
   )

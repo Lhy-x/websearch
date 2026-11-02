@@ -100,7 +100,7 @@ export function NewCampaignForm({ offers, strategies, saved, defaults }: { offer
           <CardBody className="space-y-2">
             {steps.map((s, i) => (
               <div key={i} className="flex items-end gap-2">
-                <Field label={i === 0 ? 'Étape 1 — J0' : `Étape ${i + 1} — délai (jours après l’étape précédente)`} className="flex-1">
+                <Field group label={i === 0 ? 'Étape 1 — J0' : `Étape ${i + 1} — délai (jours après l’étape précédente)`} className="flex-1">
                   <div className="flex gap-2">
                     {i > 0 ? <Input type="number" min={1} max={60} className="w-20" value={s.delayDays} onChange={(e) => setSteps((st) => st.map((x, k) => (k === i ? { ...x, delayDays: Number(e.target.value) } : x)))} /> : null}
                     <Select value={s.contentKey} onChange={(e) => setSteps((st) => st.map((x, k) => (k === i ? { ...x, contentKey: e.target.value } : x)))}>{VARIANTS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>

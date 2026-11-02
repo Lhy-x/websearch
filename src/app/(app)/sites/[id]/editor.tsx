@@ -264,7 +264,7 @@ function SectionEditor({ section: s, media, onChange }: { section: Section; medi
       {s.type === 'about' || s.type === 'area' || s.type === 'cta' ? <Field label="Texte"><Textarea rows={4} maxLength={s.type === 'about' ? 1500 : 600} value={s.body} onChange={(e) => onChange((x) => { (x as { body: string }).body = e.target.value })} /></Field> : null}
       {s.type === 'hours' ? <Notice tone="info">Horaires issus de la source « {s.source} » — non modifiables ici (faits vérifiés).</Notice> : null}
       {s.type === 'gallery' ? (
-        <Field label="Images affichées" hint="Ajoutez des médias sous licence dans le bloc Médias.">
+        <Field group label="Images affichées" hint="Ajoutez des médias sous licence dans le bloc Médias.">
           <div className="space-y-1">{media.map((m) => <label key={m.id} className="flex items-center gap-2 text-xs"><input type="checkbox" checked={s.mediaIds.includes(m.id)} onChange={(e) => onChange((x) => { const g = x as { mediaIds: string[] }; g.mediaIds = e.target.checked ? [...g.mediaIds, m.id] : g.mediaIds.filter((id) => id !== m.id) })} />{m.alt}</label>)}</div>
         </Field>
       ) : null}

@@ -79,14 +79,14 @@ export function SettingsClient({ settings, secrets, infra, offers, strategies, s
           <Field label="Pays par défaut"><Select value={s.search.defaultCountry} onChange={(e) => patch('search', { defaultCountry: e.target.value as 'FR' })}><option value="FR">France</option><option value="BE">Belgique</option><option value="CH">Suisse</option></Select></Field>
           <Field label="Rayon par défaut (km)"><Input type="number" min={1} max={100} value={s.search.defaultRadiusKm} onChange={(e) => patch('search', { defaultRadiusKm: Number(e.target.value) })} /></Field>
           <Field label="Résultats max par recherche"><Input type="number" min={10} max={5000} value={s.search.maxResults} onChange={(e) => patch('search', { maxResults: Number(e.target.value) })} /></Field>
-          <Field label="Sources activées par défaut" className="md:col-span-3">
+          <Field group label="Sources activées par défaut" className="md:col-span-3">
             <div className="flex flex-wrap gap-4">
               {infra.connectors.map((c) => (
                 <label key={c.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={s.search.sources[c.id as keyof Settings['search']['sources']] ?? false} onChange={(e) => patch('search', { sources: { ...s.search.sources, [c.id]: e.target.checked } })} />{c.label}{!c.configured ? <Badge tone="warning">Non configuré</Badge> : null}</label>
               ))}
             </div>
           </Field>
-          <Field label="Secteurs ciblés (pertinence maximale dans le score)" className="md:col-span-3">
+          <Field group label="Secteurs ciblés (pertinence maximale dans le score)" className="md:col-span-3">
             <div className="flex flex-wrap gap-2">
               {SECTORS.map((x) => <label key={x.id} className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={s.targetSectors.includes(x.id)} onChange={(e) => setS((v) => ({ ...v, targetSectors: e.target.checked ? [...v.targetSectors, x.id] : v.targetSectors.filter((t) => t !== x.id) }))} />{x.label}</label>)}
             </div>

@@ -68,8 +68,20 @@ export function SearchWorkspace({ defaults, connectors }: { defaults: { country:
   // restore the form from the run parameters (shareable URL)
   useEffect(() => {
     if (!run) return
-    const p = run.params as Partial<Form> & { lat?: number | null; lon?: number | null }
-    setForm((f) => ({ ...f, ...(p as object), lat: p.lat != null ? String(p.lat) : '', lon: p.lon != null ? String(p.lon) : '', city: (p.city as string) ?? '', postcode: (p.postcode as string) ?? '', keywords: (p.keywords as string) ?? '', sector: (p.sector as string) ?? '' }))
+    const p = run.params as Record<string, unknown>
+    // stored params use null for "not set": never feed null/undefined to a controlled input
+    const str = (k: string) => (p[k] == null ? '' : String(p[k]))
+    setForm((f) => ({
+      ...f,
+      country: (p.country as Form['country']) ?? f.country,
+      region: str('region'), department: str('department'), city: str('city'), postcode: str('postcode'),
+      lat: str('lat'), lon: str('lon'), sector: str('sector'), keywords: str('keywords'),
+      radiusKm: typeof p.radiusKm === 'number' ? p.radiusKm : f.radiusKm,
+      maxResults: typeof p.maxResults === 'number' ? p.maxResults : f.maxResults,
+      sources: Array.isArray(p.sources) ? (p.sources as string[]) : f.sources,
+      websiteFilter: typeof p.websiteFilter === 'string' ? p.websiteFilter : f.websiteFilter,
+      requireEmail: p.requireEmail === true, requirePhone: p.requirePhone === true, excludeContacted: p.excludeContacted !== false,
+    }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run?.id])
 

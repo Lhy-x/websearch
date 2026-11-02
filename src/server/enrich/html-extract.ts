@@ -30,7 +30,8 @@ export function extractEmails(text: string): string[] {
 
 /** Parse untrusted HTML into facts. Nothing from the page is ever executed or re-rendered as HTML. */
 export function extractPage(html: string, pageUrl: string): PageExtract {
-  const root = parse(html, { blockTextElements: { script: false, style: false, noscript: false } })
+  // separate adjacent elements so their texts don't merge ("Écrire" + "rdv@…" → "crirerdv@…")
+  const root = parse(html.replace(/>(?=<)/g, '> '), { blockTextElements: { script: false, style: false, noscript: false } })
   const base = new URL(pageUrl)
   const links = root.querySelectorAll('a[href]').map((a) => a.getAttribute('href') ?? '')
   const abs = links

@@ -13,3 +13,4 @@ test-results/
 coverage/
 .venv/
 __pycache__/
+storage-test/

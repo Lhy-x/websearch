@@ -99,16 +99,20 @@ export type Layout = (typeof LAYOUTS)[number]
  * Words/patterns that would turn the demo into a fabricated claim (reviews, ratings, years of experience,
  * prices, certifications, awards…). AI output containing them is rejected for that field.
  */
+/** Unicode-aware word boundaries (JS `\b` ignores accented letters such as « é »). */
+const W = (src: string) => new RegExp(`(?<![\\p{L}\\p{N}])(?:${src})(?![\\p{L}\\p{N}])`, 'iu')
+
 export const FORBIDDEN_CLAIMS: RegExp[] = [
-  /\b\d+\s*(ans|années|years)\b/i,
-  /\bdepuis\s+(19|20)\d{2}\b/i,
-  /\b(avis|témoignages?|reviews?|étoiles|★|⭐)\b/i,
-  /\b\d+(?:[.,]\d+)?\s*(€|eur|euros|chf|\$)/i,
-  /(€|chf)\s*\d/i,
-  /\b(certifié|certifiée|certification|labellisé|label|qualibat|rge|agréé|agréée|primé|primée|récompensé|récompense|award|meilleur ouvrier|mof)\b/i,
-  /\b(n°\s*1|numéro\s*1|leader|le meilleur|la meilleure|les meilleurs)\b/i,
-  /\b\d{2,}\s*(clients|réalisations|projets|chantiers|interventions)\b/i,
-  /\b(garanti|garantie)\s+\d+/i,
+  W('\\d+\\s*(?:ans|années|years)'),
+  W('depuis\\s+(?:19|20)\\d{2}'),
+  W('avis|témoignages?|reviews?|étoiles|note de \\d'),
+  /[★⭐]/u,
+  W('\\d+(?:[.,]\\d+)?\\s*(?:€|eur|euros|chf|\\$)'),
+  /(?:€|chf)\s*\d/iu,
+  W('certifiée?s?|certification|labellisée?s?|label|qualibat|rge|agréée?s?|primée?s?|récompensée?s?|récompenses?|awards?|meilleur ouvrier|mof'),
+  W('n°\\s*1|numéro\\s*1|leader|le meilleur|la meilleure|les meilleurs'),
+  W('\\d{2,}\\s*(?:clients|réalisations|projets|chantiers|interventions)'),
+  W('garantie?\\s+\\d+'),
 ]
 
 export function findForbiddenClaim(s: string): string | null {

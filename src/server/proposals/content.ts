@@ -29,7 +29,8 @@ export interface ProposalFacts {
 }
 
 /** Claims we must never make about the prospect (price of OUR offer is allowed). */
-const PROSPECT_CLAIMS = [/\b(avis|étoiles|note de)\b/i, /\b\d+\s*(ans|années)\b/i, /\b(certifié|labellisé|primé)\b/i, /vos clients (nous )?(disent|trouvent)/i, /\bj'ai vu que vous avez\s+\d+/i]
+const B = (src: string) => new RegExp(`(?<![\\p{L}\\p{N}])(?:${src})(?![\\p{L}\\p{N}])`, 'iu')
+const PROSPECT_CLAIMS = [B('avis|étoiles|note de'), B('\\d+\\s*(?:ans|années)'), B('certifiée?|labellisée?|primée?'), B('vos clients (?:nous )?(?:disent|trouvent)'), B("j'ai vu que vous avez\\s+\\d+"), B('comme convenu|suite à notre (?:échange|conversation|appel)')]
 export function findProspectClaim(text: string): string | null {
   for (const re of PROSPECT_CLAIMS) {
     const m = text.match(re)

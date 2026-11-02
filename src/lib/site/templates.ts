@@ -323,7 +323,7 @@ export const TEMPLATES: TemplateDef[] = [
       { title: 'Vente', description: 'Mise en valeur et commercialisation de votre bien.', icon: 'key' },
       { title: 'Achat', description: 'Recherche de biens selon vos critères.', icon: 'home' },
       { title: 'Location & gestion', description: 'Mise en location et suivi.', icon: 'briefcase' },
-      { title: 'Estimation', description: 'Un avis de valeur basé sur le marché local.', icon: 'chart' },
+      { title: 'Estimation', description: 'Une estimation fondée sur le marché local.', icon: 'chart' },
     ],
     benefitsTitle: '',
     benefits: [],

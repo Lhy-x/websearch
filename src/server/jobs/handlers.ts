@@ -14,6 +14,10 @@ import { flagStuckSending, sendOutbound } from '../email/send'
 import { syncImap } from '../email/imap'
 import { enqueueJob, type Job } from './queue'
 import { runBackup } from './backup'
+import { getObject } from '../core/storage'
+import { importCommitSchema, mapImportRows, parseImportFile } from '../connectors/import'
+import { clusterRecords } from '../search/dedup'
+import { persistCluster } from '../search/run-search'
 
 export interface JobContext {
   job: Job
@@ -38,6 +42,7 @@ export const JOB_TYPES = {
   'inbox.sync': 'Synchronisation IMAP',
   'maintenance.cleanup': 'Nettoyage',
   'backup.run': 'Sauvegarde',
+  'import.run': 'Import de fichier',
 } as const
 export type JobType = keyof typeof JOB_TYPES
 
@@ -188,6 +193,28 @@ export const HANDLERS: Record<JobType, Handler> = {
     const expired = await db`update generated_websites set preview_enabled = false where preview_enabled and preview_expires_at < now() returning id`
     const attempts = await db`delete from login_attempts where created_at < now() - interval '7 days' returning id`
     return { jobLogs: logs.length, jobs: jobs.length, previewsExpired: expired.length, loginAttempts: attempts.length }
+  },
+
+  async 'import.run'(p, ctx) {
+    const input = importCommitSchema.parse(p)
+    const { rows } = await parseImportFile(await getObject(input.key), input.filename)
+    const { places, errors } = mapImportRows(rows, input.mapping, { country: input.country })
+    const { clusters } = clusterRecords(places.map((pl) => ({ ...pl, phones: pl.phones, websites: pl.websites, place: pl })))
+    let created = 0
+    let updated = 0
+    for (let i = 0; i < clusters.length; i++) {
+      if (i % 50 === 0) {
+        if (!(await ctx.isActive())) throw new Error('Import annulé')
+        await ctx.log(`${i}/${clusters.length} fiches enregistrées`, i / clusters.length)
+      }
+      const group = clusters[i]!.map((c) => c.place)
+      const r = await persistCluster(group)
+      if (r.created) created++
+      else updated++
+      const tags = [...new Set(group.flatMap((g) => g.tags))]
+      if (tags.length) await sql()`update businesses set tags = (select array(select distinct unnest(tags || ${tags}::text[]))) where id = ${r.id}`
+    }
+    return { rows: rows.length, valid: places.length, invalid: errors.length, created, updated, errors: errors.slice(0, 200) }
   },
 
   async 'backup.run'(_p, ctx) {

@@ -35,6 +35,6 @@ migration.once('exit', code => {
   if (code !== 0) { stop(code ?? 1); return }
   console.log('\nOuverture : http://localhost:' + (process.env.PORT || '3000') + '\nGardez cette fenêtre ouverte. Ctrl+C pour arrêter.\n')
   const worker = launch(['node_modules/tsx/dist/cli.mjs', 'src/worker/main.ts'])
-  const web = launch(['node_modules/next/dist/bin/next', 'dev', '--webpack', '-p', process.env.PORT || '3000'])
+  const web = launch(['node_modules/next/dist/bin/next', 'dev', '--webpack', '-H', '127.0.0.1', '-p', process.env.PORT || '3000'])
   for (const child of [worker, web]) child.once('exit', code => { if (!stopping) stop(code || 1) })
 })

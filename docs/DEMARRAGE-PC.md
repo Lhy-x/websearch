@@ -126,3 +126,21 @@ L’installateur actualise les dépendances et conserve `.env`, les identifiants
 existantes. Le lancement applique les nouvelles migrations. Si Git refuse la mise à jour
 à cause de modifications locales, conservez-les et résolvez le message avant de poursuivre ;
 ne réinitialisez pas votre dossier pour forcer la mise à jour.
+
+## Adresse locale et mot de passe
+
+Utilisez **http://localhost:3000** sur le Mac qui lance l’application. Le lanceur se lie
+à `127.0.0.1`, sans exposer le serveur de développement sur le réseau local. Une adresse
+`192.168…` n’est pas nécessaire pour l’utiliser sur ce Mac.
+
+Le formulaire de connexion utilise POST même avant le chargement de JavaScript et ne
+transmet pas le mot de passe dans l’URL. Si un ancien journal ou historique contient vos
+identifiants, arrêtez l’application et remplacez le mot de passe local :
+
+```sh
+PATH="$(brew --prefix node@22)/bin:$PATH" npm run password:local
+bash LANCER-MAC.command
+```
+
+Notez le nouveau mot de passe affiché dans votre terminal sans le partager. L’email,
+la base et les autres réglages sont conservés ; les anciennes sessions sont invalidées.

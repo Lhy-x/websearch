@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "password:local": "node scripts/reset-local-password.mjs",
     "setup:local": "node scripts/setup-local.mjs",
     "dev:local": "node scripts/start-local.mjs",
     "build": "next build",

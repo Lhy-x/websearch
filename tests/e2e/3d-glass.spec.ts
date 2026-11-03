@@ -13,7 +13,7 @@ test('3D generation → isolated public preview → editor → standalone export
     id = business!.id
     expect((await page.request.post('/api/auth/login', { data: { email: 'admin@e2e.local', password: 'e2e-password-123' } })).ok()).toBeTruthy()
     await page.goto('/generator')
-    await expect(page.locator('option[value="glass3d"]')).toHaveCount(1)
+    await expect(page.locator('option[value="glass3d"]')).toHaveCount(0)
     const queued = await page.request.post(`/api/prospects/${id}`, { data: { action: 'generate_site', generator: 'glass3d' } })
     expect(queued.ok()).toBeTruthy()
     const { jobId } = await queued.json()

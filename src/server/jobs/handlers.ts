@@ -127,7 +127,7 @@ export const HANDLERS: Record<JobType, Handler> = {
 
   async 'website.generate'(p, ctx) {
     const input = z
-      .object({ businessId: uuid, templateId: z.string().optional().nullable(), style: z.string().optional().nullable(), generator: z.enum(['auto', 'bespoke', 'ai', 'deterministic', 'glass3d']).default('auto') })
+      .object({ businessId: uuid, templateId: z.string().optional().nullable(), style: z.string().optional().nullable(), generator: z.enum(['auto', 'bespoke', 'ai', 'deterministic', 'glass3d', 'personalized']).default('personalized') })
       .parse(p)
     // auto: bespoke when an AI is available and the setting says so; template generation otherwise
     let mode = input.generator
@@ -136,7 +136,10 @@ export const HANDLERS: Record<JobType, Handler> = {
       if (s.sites.generationMode === 'bespoke' && (await aiAvailability()).available) mode = 'bespoke'
     }
     let r: { websiteId: string; version: number }
-    if (mode === 'bespoke') {
+    if (mode === 'personalized') {
+      await ctx.log('Conception personnalisée à partir du skill Premium 3D Glass : direction artistique, silhouette originale et site unique.')
+      r = await generateBespokeWebsite(input.businessId,{personalized:true,jobId:ctx.job.id,log:m=>ctx.log(m)})
+    } else if (mode === 'bespoke') {
       try {
         r = await generateBespokeWebsite(input.businessId, { styleHint: input.style, jobId: ctx.job.id, log: (m) => ctx.log(m) })
       } catch (e) {

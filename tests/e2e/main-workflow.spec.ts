@@ -51,10 +51,12 @@ test('reference workflow end-to-end', async ({ page, request, baseURL }) => {
 
   // 4. Generate a site (deterministic: no AI key in E2E)
   await page.reload()
-  await page.getByRole('button', { name: 'Générer un site' }).click()
-  await page.locator('select[name="generator"]').selectOption('deterministic')
-  await page.getByRole('dialog').getByRole('button', { name: 'Générer' }).click()
-  await expect(page.getByText('Génération du site : terminé')).toBeVisible({ timeout: 120_000 })
+  // Legacy deterministic renderer is checked explicitly via API; the product UI now creates custom AI sites.
+  const generation = await page.request.post(`/api/prospects/${businessId}`, { data: { action: 'generate_site', generator: 'deterministic' } })
+  expect(generation.ok()).toBeTruthy()
+  const { jobId: generationJob } = await generation.json()
+  await expect.poll(async () => (await (await page.request.get(`/api/jobs/${generationJob}`)).json()).job.status, { timeout: 120_000 }).toBe('COMPLETED')
+  await page.reload()
   await expect(page.getByRole('link', { name: 'Éditer' }).first()).toBeVisible()
 
   // 5. Public preview: works without session, noindex, demo banner

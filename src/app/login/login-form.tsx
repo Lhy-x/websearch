@@ -11,7 +11,7 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   return (
-    <Card className="p-5">
+    <Card className="login-form-card">
       <form
         className="space-y-4"
         onSubmit={async (e) => {
@@ -34,7 +34,7 @@ export function LoginForm() {
         <Field label="Email"><Input name="email" type="email" autoComplete="username" required autoFocus /></Field>
         <Field label="Mot de passe"><Input name="password" type="password" autoComplete="current-password" required /></Field>
         {error ? <p role="alert" className="text-xs text-danger">{error}</p> : null}
-        <Button type="submit" className="w-full" loading={busy}>Se connecter</Button>
+        <Button type="submit" className="h-12 w-full rounded-xl" loading={busy}>Se connecter</Button>
       </form>
     </Card>
   )

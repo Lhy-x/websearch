@@ -3,10 +3,11 @@ import { existsSync } from 'node:fs'
 import { loadEnvFile } from 'node:process'
 import { spawn } from 'node:child_process'
 
-if (Number(process.versions.node.split('.')[0]) < 22 || !existsSync('.env') || !existsSync('node_modules/next')) {
-  console.error('Installation requise : Node.js >= 22, npm ci, puis npm run setup:local.')
-  process.exit(1)
-}
+const missing=[]
+if(Number(process.versions.node.split('.')[0])<22)missing.push('Node.js 22 ou plus récent (version actuelle : '+process.version+')')
+if(!existsSync('.env'))missing.push('Configuration locale .env : lancez npm run setup:local')
+if(!existsSync('node_modules/next'))missing.push('Dépendances : lancez npm ci')
+if(missing.length){console.error('Il manque :\n'+missing.map(m=>'• '+m).join('\n'));process.exit(1)}
 loadEnvFile('.env')
 const children = new Set()
 let stopping = false

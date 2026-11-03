@@ -1,3 +1,4 @@
+import { aiAvailability } from '@/server/ai/client'
 import { z } from 'zod'
 import { sql } from '@/server/core/db'
 import { auditLog } from '@/server/core/audit'
@@ -47,7 +48,7 @@ export const PATCH = adminRoute(async ({ params, body }) => {
 const actionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('enrich') }),
   z.object({ action: z.literal('audit') }),
-  z.object({ action: z.literal('generate_site'), templateId: z.string().optional().nullable(), style: z.string().optional().nullable(), generator: z.enum(['auto', 'bespoke', 'ai', 'deterministic', 'glass3d']).default('auto') }),
+  z.object({ action: z.literal('generate_site'), templateId: z.string().optional().nullable(), style: z.string().optional().nullable(), generator: z.enum(['auto', 'bespoke', 'ai', 'deterministic', 'glass3d', 'personalized']).default('personalized') }),
   z.object({ action: z.literal('proposal'), websiteId: z.string().uuid().optional().nullable(), offerId: z.string().uuid().optional().nullable(), strategyId: z.string().uuid().optional().nullable() }),
   z.object({ action: z.literal('set_status'), status: z.enum(PIPELINE.map((p) => p.id) as [string, ...string[]]) }),
   z.object({ action: z.literal('confirm_no_website'), note: z.string().max(300).optional() }),
@@ -74,6 +75,7 @@ export const POST = adminRoute(async ({ params, body }) => {
     case 'audit':
       return { jobId: (await enqueueJob('business.audit', { businessId: id }, { priority: 30 })).job.id }
     case 'generate_site':
+      if(a.generator === 'personalized') { const ai=await aiAvailability(); if(!ai.available) throw new AppError('Connectez Claude ou Codex dans Paramètres → IA avant de générer un site personnalisé. '+(ai.reason ?? ''),400,'AI_REQUIRED') }
       return { jobId: (await enqueueJob('website.generate', { businessId: id, templateId: a.templateId, style: a.style, generator: a.generator }, { priority: 20 })).job.id }
     case 'proposal':
       return { jobId: (await enqueueJob('proposal.generate', { businessId: id, websiteId: a.websiteId, offerId: a.offerId, strategyId: a.strategyId }, { priority: 20 })).job.id }

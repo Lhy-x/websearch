@@ -6,6 +6,7 @@ import { SITE_CSS } from '@/lib/site/render/site-css'
 import type { SiteConfig } from '@/lib/site/schema'
 import { isHtmlSite, type WebsiteVersionData } from '@/lib/site/bespoke-schema'
 import { renderBespokeDocument } from './bespoke/document'
+import { renderPersonalizedDocument } from './glass/personalized-document'
 import { renderGlassDocument } from './glass/document'
 import { readFile } from 'node:fs/promises'
 import { renderSiteDocument } from './html'
@@ -16,9 +17,10 @@ import { renderSiteDocument } from './html'
  */
 export async function exportSiteZip(v: WebsiteVersionData, opts: { includeMedia?: boolean; allowPrivate?: boolean } = {}): Promise<{ filename: string; buffer: Buffer; warnings: string[] }> {
   if (isHtmlSite(v)) return zip(slugify(v.businessName) || 'site', [
-    { name: 'index.html', data: renderBespokeDocument(v, { mode: 'export' }) },
+    { name: 'index.html', data: v.glassScene ? await renderPersonalizedDocument(v,{mode:'export'}) : renderBespokeDocument(v, { mode: 'export' }) },
     { name: 'site.json', data: JSON.stringify(v, null, 2) },
-    { name: 'README.txt', data: `Site sur mesure « ${v.businessName} » — fichier unique index.html (CSS intégré, aucun JavaScript), prêt pour tout hébergement statique.\nVérifiez les prestations et les textes avec le client avant publication.\n` },
+    ...(v.glassScene ? await Promise.all(['licenses/Three-MIT.txt','licenses/Space-Grotesk-OFL.txt','PROVENANCE.md'].map(async name => ({name,data:await readFile(`vendor/premium-3d-glass/${name}`,'utf8')}))) : []),
+    { name: 'README.txt', data: `Site sur mesure « ${v.businessName} » — fichier unique index.html (CSS intégré${v.glassScene ? ', moteur 3D local inclus avec repli statique' : ', aucun JavaScript'}), prêt pour tout hébergement statique.\nVérifiez les prestations et les textes avec le client avant publication.\n` },
   ], [])
   if (v.glass3d) {
     const files = [

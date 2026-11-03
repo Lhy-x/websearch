@@ -60,13 +60,13 @@ PostgreSQL + migrations + dashboard (port 3000, lié à 127.0.0.1) + worker (ima
 | `npm run worker` | Worker (file de tâches, planifications, campagnes, reprise sur panne) |
 | `npm run migrate` | Applique `db/migrations/*.sql` (idempotent) + données de référence |
 | `npm run hash-password -- '…'` | Génère `ADMIN_PASSWORD_HASH` |
-| `npm test` | 81 tests unitaires + intégration (base `prospectforge_test`) |
+| `npm test` | Tests unitaires + intégration (base `prospectforge_test`) |
 | `npm run test:e2e` | Parcours de référence complet dans Chromium (base `prospectforge_e2e`, email sandbox) |
 | `npm run typecheck` | TypeScript strict |
 
-## Sites 3D interactifs
+## Atelier sur mesure, en un clic
 
-Le moteur **3D Glass** génère des sites avec verre Three.js, réactions au curseur et fragmentation au défilement. Choisir ce moteur dans le générateur ou depuis une fiche prospect, puis modifier l’objet et les couleurs dans l’éditeur. Export HTML autonome, sans clé IA. Voir [Sites 3D Glass](docs/3D-GLASS.md).
+Le bouton **Créer le site sur mesure** utilise le skill **Premium 3D Glass** fourni, le dossier du prospect et votre IA pour concevoir une page originale : composition, textes, palette et silhouette de verre unique. Aucun template à sélectionner. L’atelier vérifie les faits, le rendu mobile et la scène WebGL ; une IA manquante est signalée au lieu d’un remplacement par template. Connectez Claude/Codex ou votre fournisseur API une première fois dans Paramètres → IA. Voir [Atelier 3D personnalisé](docs/3D-GLASS.md).
 
 ## Parcours principal
 
@@ -74,9 +74,7 @@ Le moteur **3D Glass** génère des sites avec verre Three.js, réactions au cur
    Les sources configurées sont interrogées par le worker ; résultats dédoublonnés, enregistrés et scorés.
 2. **Fiche prospect** : chaque coordonnée affiche sa source, son statut (publié par une source / non vérifié / invalide)
    et ses dates ; le score est expliqué ligne par ligne.
-3. **Générer un site** : template selon le secteur (15 templates, 7 structures), contenu IA si configurée
-   (sinon génération déterministe sans coût), capture automatique, démo publique `/preview/<jeton>` (noindex, sans JS sauf moteur 3D isolé,
-   expirable, désactivable).
+3. **Créer le site sur mesure** : l’IA conçoit une composition, des textes et une silhouette de verre propres au prospect à partir du skill fourni. Contrôles et captures automatiques ; démo publique `/preview/<jeton>` isolée, noindex, expirable et désactivable. Une connexion IA est requise, sans repli vers un template.
 4. **Éditeur** : textes, couleurs, polices, sections, médias sous licence, versions, export ZIP statique.
 5. **Proposition** : 8 variantes d'emails fondées uniquement sur les faits vérifiés + lien de démo.
 6. **Campagne** : mode manuel / semi-automatique / automatique, plage d'envoi, plafond, séquence de relances.

@@ -13,7 +13,7 @@ export async function captureWebsite(websiteId: string): Promise<{ version: numb
   const v = await getWebsiteVersion(websiteId)
   if (!v) throw new Error('Aucune version à capturer')
   const html = await renderVersion(v.config, 'preview', null)
-  const glass = !isHtmlSite(v.config) && !!v.config.glass3d
+  const glass = isHtmlSite(v.config) ? !!v.config.glassScene : !!v.config.glass3d
   const browser = await getBrowser({ softwareWebGL: glass })
   const out: { kind: string; path: string; mime: string; size: number }[] = []
   const shoot = async (kind: string, viewport: { width: number; height: number }, scale: number, fullPage: boolean, mobile = false) => {

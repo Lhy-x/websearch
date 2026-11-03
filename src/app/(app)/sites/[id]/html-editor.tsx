@@ -156,7 +156,7 @@ export function HtmlEditor({ site, initial, versions, shots }: Props) {
             </div>
           </div>
           <div className="grid place-items-center rounded-xl border border-border bg-panel-2 p-3">
-            <iframe title="Aperçu du site" sandbox="" srcDoc={html} className="rounded-lg border border-border bg-white" style={{ width: device === 'mobile' ? 390 : '100%', height: '78vh' }} />
+            <iframe title="Aperçu du site" sandbox={cfg.glassScene ? "allow-scripts allow-popups" : ""} srcDoc={html} className="rounded-lg border border-border bg-white" style={{ width: device === 'mobile' ? 390 : '100%', height: '78vh' }} />
           </div>
         </div>
       </div>

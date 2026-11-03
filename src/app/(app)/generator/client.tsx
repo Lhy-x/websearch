@@ -1,116 +1,65 @@
 'use client'
-import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Sparkles } from 'lucide-react'
+import { ArrowUpRight, Check, CircleDot, Loader2, Search, Sparkles, WandSparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge, Card, CardBody, CardHeader, Field, Notice, Select, Table, Td, Th } from '@/components/ui/primitives'
-import { PresenceBadge, ScorePill } from '@/components/badges'
-import { useSelection } from '@/components/selection'
-import { TEMPLATES } from '@/lib/site/templates'
-import { STYLES } from '@/lib/site/schema'
-import { SECTOR_BY_ID } from '@/lib/sectors'
-import { JOB_STATUS } from '@/lib/labels'
-import { api, fmtRelative, fmtUsd } from '@/lib/utils'
+import { api, fmtRelative } from '@/lib/utils'
 
 interface Candidate { id: string; name: string; city: string | null; sector: string | null; score: number | null; web_presence_status: string; sites: number }
+interface Job { id: string; status: string; error: string | null; created_at: string; result: { websiteId?: string } | null; name: string | null }
+interface Availability { available: boolean; provider: string; reason?: string }
 
-export function GeneratorClient({ candidates, preselect, jobs }: { candidates: Candidate[]; preselect: string | null; jobs: { id: string; status: string; error: string | null; created_at: string; result: { websiteId?: string } | null; name: string | null }[] }) {
-  const router = useRouter()
-  const sel = useSelection()
-  const [templateId, setTemplateId] = useState('')
-  const [style, setStyle] = useState('')
-  const [generator, setGenerator] = useState('auto')
-  const [variants, setVariants] = useState(1)
-  const [busy, setBusy] = useState(false)
-  useEffect(() => {
-    if (preselect) sel.setMany([preselect], true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preselect])
-  const chosen = [...sel.ids]
-  const count = chosen.length * variants
-  const est = useQuery({ queryKey: ['est', count, generator], queryFn: () => api<{ ai: boolean; model: string | null; perItemUsd: number | null; totalUsd: number | null; note: string }>(`/api/estimate?task=${generator === 'ai' ? 'site_generation' : 'site_bespoke'}&count=${Math.max(1, count)}`), enabled: !['deterministic', 'glass3d'].includes(generator) })
-  useEffect(() => {
-    if (jobs.some((j) => ['PENDING', 'RUNNING', 'RETRYING'].includes(j.status))) {
-      const t = setTimeout(() => router.refresh(), 2500)
-      return () => clearTimeout(t)
-    }
-  }, [jobs, router])
-  return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
-      <Card>
-        <CardHeader title="Prospects" description="Sélection partagée avec la base de prospects (persistante)." />
-        <Table>
-          <thead><tr><Th className="w-8" /><Th>Score</Th><Th>Établissement</Th><Th>Présence web</Th><Th>Démos</Th></tr></thead>
-          <tbody>
-            {candidates.map((c) => (
-              <tr key={c.id} className={sel.has(c.id) ? 'bg-primary/5' : ''}>
-                <Td><input type="checkbox" checked={sel.has(c.id)} onChange={() => sel.toggle(c.id)} aria-label={c.name} /></Td>
-                <Td><ScorePill score={c.score} /></Td>
-                <Td><Link className="font-medium hover:text-primary" href={`/prospects/${c.id}`}>{c.name}</Link><div className="text-xs text-muted">{[c.sector ? SECTOR_BY_ID.get(c.sector)?.label : null, c.city].filter(Boolean).join(' · ')}</div></Td>
-                <Td><PresenceBadge status={c.web_presence_status} /></Td>
-                <Td className="text-xs">{c.sites || '—'}</Td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </Card>
-      <div className="space-y-6">
-        <Card>
-          <CardHeader title="Options" />
-          <CardBody className="space-y-3">
-            <Field label="Template"><Select value={templateId} onChange={(e) => setTemplateId(e.target.value)}><option value="">Automatique (selon le secteur)</option>{TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</Select></Field>
-            <Field label="Style imposé"><Select value={style} onChange={(e) => setStyle(e.target.value)}><option value="">Libre</option>{STYLES.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}</Select></Field>
-            <Field label="Moteur"><Select value={generator} onChange={(e) => setGenerator(e.target.value)}><option value="auto">Automatique (sur mesure si l’IA est disponible)</option><option value="glass3d">3D Glass — verre interactif (sans IA)</option><option value="bespoke">Sur mesure (IA — qualité maximale)</option><option value="ai">Template + textes IA</option><option value="deterministic">Template déterministe (gratuit)</option></Select></Field>
-            {generator === 'glass3d' ? <Notice tone="info" title="Vraie 3D interactive">Verre, fragments au défilement et réaction au curseur. Objet et couleurs modifiables dans l’éditeur. Version sans animation incluse.</Notice> : null}
-            <Field label="Variantes par prospect" hint="Plusieurs styles différents pour le même prospect"><Select value={variants} onChange={(e) => setVariants(Number(e.target.value))}>{[1, 2, 3].map((n) => <option key={n} value={n}>{n}</option>)}</Select></Field>
-            {!['deterministic', 'glass3d'].includes(generator) && est.data ? (
-              <Notice tone="info" title={est.data.ai ? `Coût estimé : ${est.data.totalUsd != null ? fmtUsd(est.data.totalUsd) : 'inconnu'} pour ${count} génération(s)` : 'Aucun coût IA'}>{est.data.note}</Notice>
-            ) : null}
-            <Button
-              className="w-full"
-              disabled={!chosen.length}
-              loading={busy}
-              onClick={async () => {
-                setBusy(true)
-                try {
-                  const styles = style ? [style] : variants > 1 ? STYLES.filter((s) => ['moderne', 'elegant', 'minimaliste', 'premium', 'artisanal'].includes(s)) : [null]
-                  let queued = 0
-                  for (let v = 0; v < variants; v++) {
-                    const r = await api<{ queued: number }>('/api/prospects/bulk', { method: 'POST', json: { ids: chosen, action: 'generate_site', generator, templateId: templateId || undefined, style: (styles[v % styles.length] as string | null) ?? undefined } })
-                    queued += r.queued
-                  }
-                  toast.success(`${queued} génération(s) en file d’attente`)
-                  router.refresh()
-                } catch (e) {
-                  toast.error((e as Error).message)
-                } finally {
-                  setBusy(false)
-                }
-              }}
-            >
-              <Sparkles />Générer {count || ''} site(s)
-            </Button>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardHeader title="Générations récentes" />
-          <ul className="divide-y divide-border text-xs">
-            {jobs.map((j) => (
-              <li key={j.id} className="flex items-center justify-between gap-2 px-4 py-2">
-                <span className="min-w-0 truncate">{j.name ?? '—'}</span>
-                <span className="flex shrink-0 items-center gap-2">
-                  <Badge tone={JOB_STATUS[j.status]}>{j.status}</Badge>
-                  {j.result?.websiteId ? <Link className="text-primary" href={`/sites/${j.result.websiteId}`}>Ouvrir</Link> : <span className="text-muted">{fmtRelative(j.created_at)}</span>}
-                </span>
-              </li>
-            ))}
-            {!jobs.length ? <li className="px-4 py-3 text-muted">Aucune génération.</li> : null}
-          </ul>
-        </Card>
+export function GeneratorClient({candidates,preselect,jobs,availability}:{candidates:Candidate[];preselect:string|null;jobs:Job[];availability:Availability}) {
+  const router=useRouter()
+  const [q,setQ]=useState('')
+  const [busy,setBusy]=useState<string|null>(null)
+  const [selected,setSelected]=useState(preselect ?? candidates[0]?.id ?? null)
+  useEffect(()=>{if(jobs.some(j=>['PENDING','RUNNING','RETRYING'].includes(j.status))){const timer=setTimeout(()=>router.refresh(),3000);return()=>clearTimeout(timer)}},[jobs,router])
+  const prospect=candidates.find(c=>c.id===selected)
+  const visible=candidates.filter(c=>`${c.name} ${c.city??''}`.toLowerCase().includes(q.toLowerCase()))
+  async function generate(id:string) {
+    setBusy(id)
+    try {await api('/api/prospects/'+id,{method:'POST',json:{action:'generate_site',generator:'personalized'}});toast.success('Création lancée : votre site est en cours de conception.');router.refresh()}
+    catch(error){toast.error((error as Error).message)}finally{setBusy(null)}
+  }
+  return <div className="studio-page">
+    <div className="studio-kicker"><span className="studio-live-dot"/> ATELIER CRÉATIF <span className="ml-auto text-muted">PROSPECTFORGE / 01</span></div>
+    <section className="studio-hero">
+      <div className="studio-hero-copy">
+        <h1 className="text-sm font-medium text-muted">Générateur de sites</h1>
+        <h2>Un prospect.<br/><span>Une identité.</span></h2>
+        <p>Des sites qui ont quelque chose à dire. Une direction artistique, une sculpture de verre et un design conçus pour chaque entreprise.</p>
+        <div className="studio-tags"><span><Check/> Sans template</span><span><Check/> Skill 3D intégré</span><span><Check/> Éditable et exportable</span></div>
       </div>
+      <div className="studio-art" aria-hidden="true"><div className="studio-art-grid"/><div className="studio-orbit orbit-one"/><div className="studio-orbit orbit-two"/><div className="studio-orbit orbit-three"/><span className="studio-art-label">MATIÈRE. LUMIÈRE. MOUVEMENT.</span><span className="studio-art-index">3D / SUR MESURE</span></div>
+    </section>
+    <div className="studio-workspace">
+      <section className="studio-prospects">
+        <div className="flex flex-wrap items-center justify-between gap-4"><div><span className="studio-step">01 / LE POINT DE DÉPART</span><h3 className="mt-2 text-xl font-semibold tracking-tight">Choisissez une entreprise</h3></div><span className="text-xs text-muted">{candidates.length} prospect{candidates.length>1?'s':''}</span></div>
+        <label className="studio-search"><Search className="size-4 text-muted"/><input aria-label="Rechercher une entreprise" placeholder="Un nom, une ville…" value={q} onChange={e=>setQ(e.target.value)}/></label>
+        <div className="studio-candidate-list">
+          {visible.map(c=><div key={c.id} className={`studio-candidate ${selected===c.id?'is-selected':''}`}>
+            <button className="min-w-0 flex-1 text-left" onClick={()=>setSelected(c.id)} aria-pressed={selected===c.id} aria-label={`Sélectionner ${c.name}`}><div className="flex items-center gap-3"><span className="studio-monogram">{c.name.slice(0,1).toUpperCase()}</span><div className="min-w-0"><span className="block truncate text-sm font-semibold">{c.name}</span><span className="mt-1 block text-xs text-muted">{c.city??'Ville non renseignée'} · {c.sites ? `${c.sites} site(s) créé(s)`:'Première création'}</span></div></div></button>
+            <button className="studio-create-icon" disabled={!availability.available||!!busy} onClick={()=>generate(c.id)} aria-label={`Créer le site de ${c.name}`}>{busy===c.id?<Loader2 className="size-4 animate-spin"/>:<ArrowUpRight className="size-5"/>}</button>
+          </div>)}
+          {!visible.length?<div className="py-12 text-center text-sm text-muted">Aucune entreprise ici pour le moment.<br/><Link href="/search" className="mt-3 inline-block text-primary">Rechercher des prospects <ArrowUpRight className="inline size-3"/></Link></div>:null}
+        </div>
+      </section>
+      <aside className="studio-brief">
+        <span className="studio-step">02 / LA CRÉATION</span>
+        <div className="studio-brief-icon"><WandSparkles className="size-6"/></div>
+        <h3>{prospect?.name??'Votre prochain projet'}</h3>
+        <p>Vous cliquez. L’IA fait le travail de direction artistique et compose un site original à partir des informations de l’entreprise.</p>
+        <ol className="studio-pipeline"><li><span>01</span>Identité, textes et composition uniques</li><li><span>02</span>Silhouette 3D dessinée pour l’activité</li><li><span>03</span>Contrôle des faits et relecture visuelle</li></ol>
+        <div className="studio-ai-status"><CircleDot className={`size-3 ${availability.available?'text-success':'text-warning'}`}/>{availability.available?`IA connectée · ${availability.provider}`:'Une connexion IA est nécessaire'}</div>
+        {!availability.available?<div className="studio-connect"><p>{availability.reason??'Choisissez Claude ou Codex une première fois.'}</p><Button asChild className="w-full"><Link href="/settings">Connecter mon IA <ArrowUpRight/></Link></Button></div>:<Button className="studio-generate-button" size="lg" disabled={!selected||!!busy} loading={!!busy} onClick={()=>selected&&generate(selected)}><Sparkles/>Créer le site sur mesure <ArrowUpRight/></Button>}
+        <p className="studio-fineprint">Aucun modèle de page prédéfini. La génération utilise votre abonnement ou votre fournisseur IA et son budget configuré.</p>
+      </aside>
     </div>
-  )
+    <section className="studio-recent"><div className="flex items-center justify-between"><div><span className="studio-step">VOTRE PRODUCTION</span><h3 className="mt-2 text-xl font-semibold tracking-tight">Les dernières créations</h3></div><Link href="/sites" className="flex items-center gap-2 text-xs font-medium text-muted">Tous les sites <ArrowUpRight className="size-4"/></Link></div>
+      <div className="studio-job-list">{jobs.map(j=><div key={j.id} className="studio-job"><span className="studio-job-symbol">{['PENDING','RUNNING','RETRYING'].includes(j.status)?<Loader2 className="size-4 animate-spin"/>:<Sparkles className="size-4"/>}</span><div className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{j.name??'Création personnalisée'}</span><span className="text-xs text-muted">{j.error??({'PENDING':'En attente du worker','RUNNING':'En cours de conception','RETRYING':'Nouvelle tentative','COMPLETED':'Prêt à découvrir','FAILED':'La création a échoué'}[j.status]??j.status)}</span></div>{j.result?.websiteId?<Link className="studio-open-link" href={`/sites/${j.result.websiteId}`}>Découvrir <ArrowUpRight className="size-4"/></Link>:<span className="text-xs text-muted">{fmtRelative(j.created_at)}</span>}</div>)}{!jobs.length?<p className="py-8 text-sm text-muted">Votre première création apparaîtra ici.</p>:null}</div>
+    </section>
+  </div>
 }

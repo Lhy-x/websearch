@@ -1,4 +1,4 @@
-import { PageHeader } from '@/components/ui/primitives'
+import { aiAvailability } from '@/server/ai/client'
 import { sql } from '@/server/core/db'
 import { GeneratorClient } from './client'
 
@@ -16,10 +16,11 @@ export default async function GeneratorPage({ searchParams }: { searchParams: Pr
   const jobs = await sql()<{ id: string; status: string; payload: { businessId: string }; error: string | null; created_at: Date; result: { websiteId?: string } | null; name: string | null }[]>`
     select j.id, j.status, j.payload, j.error, j.created_at, j.result, b.name from automation_jobs j left join businesses b on b.id = (j.payload->>'businessId')::uuid
     where j.type = 'website.generate' order by j.created_at desc limit 15`
+  const availability = await aiAvailability()
   return (
     <>
-      <PageHeader title="Générateur de sites" description="Sélectionnez des prospects, un template et un style. La génération est exécutée par le worker ; une capture est produite automatiquement." />
-      <GeneratorClient candidates={candidates} preselect={sp.business ?? null} jobs={jobs.map((j) => ({ ...j, created_at: j.created_at.toISOString() }))} />
+
+      <GeneratorClient availability={availability} candidates={candidates} preselect={sp.business ?? null} jobs={jobs.map((j) => ({ ...j, created_at: j.created_at.toISOString() }))} />
     </>
   )
 }

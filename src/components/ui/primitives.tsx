@@ -44,7 +44,7 @@ export function Field({ label, hint, children, className, group }: { label: stri
 }
 
 export function Card({ className, ...p }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('rounded-xl border border-border bg-panel', className)} {...p} />
+  return <div className={cn('app-card rounded-2xl border border-border bg-panel', className)} {...p} />
 }
 export function CardHeader({ title, description, actions, className }: { title: React.ReactNode; description?: React.ReactNode; actions?: React.ReactNode; className?: string }) {
   return (
@@ -93,7 +93,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="text-3xl font-semibold tracking-[-.04em]">{title}</h1>
         {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}

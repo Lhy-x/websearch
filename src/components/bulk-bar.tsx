@@ -40,7 +40,7 @@ export function BulkBar() {
       <div className="fixed bottom-4 left-1/2 z-40 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-wrap items-center gap-1.5 rounded-xl border border-border bg-panel px-3 py-2 shadow-xl">
         <span className="px-1 text-xs font-medium tabular">{ids.length} sélectionné(s)</span>
         <Button size="sm" variant="ghost" loading={busy === 'enrich'} onClick={() => run('enrich', 'Enrichissement')}><RefreshCw />Enrichir</Button>
-        <Button size="sm" variant="ghost" loading={busy === 'generate_site'} onClick={() => run('generate_site', 'Génération de sites')}><Sparkles />Générer les sites</Button>
+        <Button size="sm" variant="ghost" loading={busy === 'generate_site'} onClick={() => run('generate_site', 'Création sur mesure', {generator:'personalized'})}><Sparkles />Créer les sites sur mesure</Button>
         <Button size="sm" variant="ghost" onClick={() => setDialog('campaign')}><Megaphone />Ajouter à une campagne</Button>
         <Button size="sm" variant="ghost" onClick={() => setDialog('tag')}><Tag />Tag</Button>
         <Button size="sm" variant="ghost" onClick={() => router.push(`/prospects?ids=${ids.slice(0, 300).join(',')}`)}><Globe />Voir</Button>

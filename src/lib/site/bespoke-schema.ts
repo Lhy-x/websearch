@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { glassSceneSchema } from './glass-scene'
 
 /** What the model returns for a bespoke site. */
 export const bespokeOutputSchema = z.object({
@@ -21,6 +22,7 @@ export type QualityIssue = z.infer<typeof qualityIssueSchema>
 export const htmlSiteSchema = z.object({
   schemaVersion: z.literal(1),
   kind: z.literal('html'),
+  glassScene: glassSceneSchema.optional(),
   html: z.string().min(200).max(600_000),
   designPlan: bespokeOutputSchema.shape.designPlan.nullable(),
   businessName: z.string(),

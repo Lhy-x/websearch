@@ -105,12 +105,12 @@ export const TOOLS = [
     schema: prospectSelector.extend({ style: z.string().max(30).optional() }),
     async preview(i) {
       const rows = await resolveProspects({ ...i, withoutSite: i.withoutSite ?? true })
-      const est = await estimateCost('site_generation', Math.max(1, rows.length))
+      const est = await estimateCost('site_bespoke', Math.max(1, rows.length))
       return { summary: `${rows.length} site(s) seront générés. ${est.ai ? `Coût IA estimé : ${est.totalUsd != null ? est.totalUsd.toFixed(2) + ' $' : 'inconnu'}.` : est.note}`, rows: rows.map((r) => ({ id: r.id, Nom: r.name, Ville: r.city, Score: r.score })) }
     },
     async run(i) {
       const rows = await resolveProspects({ ...i, withoutSite: i.withoutSite ?? true })
-      for (const r of rows) await enqueueJob('website.generate', { businessId: r.id, style: i.style ?? null }, { priority: 40 })
+      for (const r of rows) await enqueueJob('website.generate', { businessId: r.id, style: i.style ?? null, generator: 'personalized' }, { priority: 40 })
       return { summary: `${rows.length} génération(s) en file d’attente.`, links: [{ label: 'Voir le générateur', href: '/generator' }] }
     },
   }),

@@ -10,8 +10,6 @@ import { Badge, Card, CardBody, CardHeader, Field, Input, Notice, Select, Textar
 import { useJobRunner } from '@/components/use-job'
 import { PIPELINE } from '@/lib/labels'
 import { SECTORS } from '@/lib/sectors'
-import { TEMPLATES } from '@/lib/site/templates'
-import { STYLES } from '@/lib/site/schema'
 import { api, fmtDate, fmtEur } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -20,7 +18,6 @@ const post = (id: string, json: Record<string, unknown>) => api<{ jobId?: string
 export function ProspectActions({ id, status, sites }: { id: string; status: string; sites: string[] }) {
   const router = useRouter()
   const runJob = useJobRunner()
-  const [gen, setGen] = useState(false)
   const [noSite, setNoSite] = useState(false)
   const simple = async (json: Record<string, unknown>, ok: string) => {
     try {
@@ -36,7 +33,7 @@ export function ProspectActions({ id, status, sites }: { id: string; status: str
       <Select className="w-44" value={status} onChange={(e) => simple({ action: 'set_status', status: e.target.value }, 'Statut mis à jour')} aria-label="Statut du pipeline">
         {PIPELINE.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
       </Select>
-      <Button onClick={() => setGen(true)}><Sparkles />Générer un site</Button>
+      <Button onClick={() => runJob('Génération du site', () => post(id, { action: 'generate_site', generator: 'personalized' }))}><Sparkles />Créer le site sur mesure</Button>
       <Button variant="outline" onClick={() => runJob('Proposition commerciale', () => post(id, { action: 'proposal', websiteId: sites[0] ?? null }))}>Créer une proposition</Button>
       <DM.Root>
         <DM.Trigger asChild><Button variant="outline">Actions<ChevronDown /></Button></DM.Trigger>
@@ -55,7 +52,6 @@ export function ProspectActions({ id, status, sites }: { id: string; status: str
           </DM.Content>
         </DM.Portal>
       </DM.Root>
-      <GenerateDialog open={gen} onOpenChange={setGen} onSubmit={(o) => runJob('Génération du site', () => post(id, { action: 'generate_site', ...o }))} />
       <Dialog open={noSite} onOpenChange={setNoSite} title="Confirmer l’absence de site" description="À utiliser après une vérification manuelle (recherche web, appel…). La fiche passera en « absence confirmée ».">
         <form className="space-y-3" onSubmit={async (e) => { e.preventDefault(); await simple({ action: 'confirm_no_website', note: String(new FormData(e.currentTarget).get('note') ?? '') }, 'Absence de site confirmée'); setNoSite(false) }}>
           <Field label="Note de vérification"><Input name="note" maxLength={300} placeholder="Recherche Google + Pages Jaunes le 02/11" /></Field>
@@ -67,26 +63,10 @@ export function ProspectActions({ id, status, sites }: { id: string; status: str
 }
 
 export function GenerateDialog({ open, onOpenChange, onSubmit, count }: { open: boolean; onOpenChange: (o: boolean) => void; onSubmit: (o: { templateId: string | null; style: string | null; generator: string }) => void; count?: number }) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange} title={count ? `Générer ${count} site(s)` : 'Générer un site de démonstration'} description="Le contenu n’utilise que les faits vérifiés ; les prestations sont marquées « indicatives ».">
-      <form
-        className="space-y-3"
-        onSubmit={(e) => {
-          e.preventDefault()
-          const fd = new FormData(e.currentTarget)
-          onSubmit({ templateId: (fd.get('templateId') as string) || null, style: (fd.get('style') as string) || null, generator: String(fd.get('generator')) })
-          onOpenChange(false)
-        }}
-      >
-        <Field label="Template"><Select name="templateId" defaultValue=""><option value="">Automatique (selon le secteur)</option>{TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</Select></Field>
-        <Field label="Style" hint="Pour le sur mesure, sert d’orientation (l’IA garde la main sur le parti pris)."><Select name="style" defaultValue=""><option value="">Choix du template / de l’IA</option>{STYLES.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}</Select></Field>
-        <Field label="Moteur" hint="« Sur mesure » : l’IA conçoit un site unique (guide frontend-design) puis il est contrôlé et corrigé automatiquement. « Template » : structure prédéfinie, textes IA ou déterministes.">
-          <Select name="generator" defaultValue="auto"><option value="auto">Automatique (sur mesure si l’IA est disponible)</option><option value="glass3d">3D Glass — verre interactif (sans IA)</option><option value="bespoke">Sur mesure (IA — qualité maximale)</option><option value="ai">Template + textes IA</option><option value="deterministic">Template déterministe (sans IA)</option></Select>
-        </Field>
-        <Button type="submit"><Sparkles />Générer</Button>
-      </form>
-    </Dialog>
-  )
+  return <Dialog open={open} onOpenChange={onOpenChange} title={count ? `Créer ${count} sites sur mesure` : 'Créer un site sur mesure'} description="L’IA conçoit une direction artistique, une silhouette 3D et une page uniques à partir des faits du prospect et du skill fourni. Aucun template à choisir.">
+    <p className="text-sm text-muted">Claude ou Codex doit être connecté dans Paramètres → IA. Chaque site est contrôlé avant livraison.</p>
+    <Button className="mt-5 w-full" onClick={() => { onSubmit({templateId:null,style:null,generator:'personalized'});onOpenChange(false) }}><Sparkles />Créer le site sur mesure</Button>
+  </Dialog>
 }
 
 export function EditProspect({ business }: { business: { id: string; name: string; sector: string | null; address: string | null; postcode: string | null; city: string | null; phone: string | null; tags: string[] } }) {

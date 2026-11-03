@@ -60,15 +60,16 @@ export async function measureRendered(html: string): Promise<QualityIssue[]> {
 }
 
 /** Screenshots for the model's visual self-review: desktop first screens + mobile page (JPEG, bounded size). */
-export async function captureForReview(html: string): Promise<{ mediaType: 'image/jpeg'; data: string }[]> {
-  const browser = await getBrowser()
+export async function captureForReview(html: string, interactive = false): Promise<{ mediaType: 'image/jpeg'; data: string }[]> {
+  const browser = await getBrowser({softwareWebGL:interactive})
   const out: { mediaType: 'image/jpeg'; data: string }[] = []
   for (const vp of [{ w: 1440, h: 900, scale: 0.6, maxH: 2400, mobile: false }, { w: 390, h: 844, scale: 1, maxH: 2600, mobile: true }]) {
-    const ctx = await browser.newContext({ viewport: { width: vp.w, height: vp.h }, deviceScaleFactor: vp.scale, isMobile: vp.mobile, javaScriptEnabled: false })
+    const ctx = await browser.newContext({ viewport: { width: vp.w, height: vp.h }, deviceScaleFactor: vp.scale, isMobile: vp.mobile, javaScriptEnabled: interactive })
     const page = await ctx.newPage()
     try {
       await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 20_000 })
       await page.waitForLoadState('load', { timeout: 6000 }).catch(() => undefined)
+      if(interactive) await page.waitForFunction(()=>!!document.documentElement.dataset.glassState,undefined,{timeout:20000}).catch(()=>undefined)
       const height = Math.min(vp.maxH, await page.evaluate('document.documentElement.scrollHeight') as number)
       const buf = await page.screenshot({ type: 'jpeg', quality: 72, fullPage: true, clip: { x: 0, y: 0, width: vp.w, height } })
       out.push({ mediaType: 'image/jpeg', data: buf.toString('base64') })

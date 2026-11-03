@@ -19,7 +19,8 @@ export async function estimateCost(task: TaskKind, count: number) {
   const s = await getSettings()
   const avail = await aiAvailability()
   const choice = chooseModel(s.ai, task)
-  if (!avail.available || !choice || s.ai.costMode === 'LOW_COST') return { ai: false, model: null, perItemUsd: 0, totalUsd: 0, note: avail.available ? 'Mode LOW_COST : génération déterministe, aucun coût IA' : `IA non configurée (${avail.reason}) : génération déterministe, aucun coût` }
+  if(task === 'site_bespoke' && (!avail.available || !choice)) return {ai:false,model:null,perItemUsd:null,totalUsd:null,note:'IA requise pour la création sur mesure : '+(avail.reason??'fournisseur à configurer')+'. Aucun template ne sera utilisé.'}
+  if (!avail.available || !choice || (s.ai.costMode === 'LOW_COST' && task !== 'site_bespoke')) return { ai: false, model: null, perItemUsd: 0, totalUsd: 0, note: avail.available ? 'Mode LOW_COST : génération déterministe, aucun coût IA' : `IA non configurée (${avail.reason}) : génération déterministe, aucun coût` }
   if (isSubscription(choice.provider)) {
     const used = await callsToday(choice.provider)
     return { ai: true, model: choice.model || choice.provider, perItemUsd: 0, totalUsd: 0, note: `Abonnement (${choice.provider}) : aucun coût par appel. Appels aujourd’hui : ${used}/${s.ai.subscriptionDailyCalls}${task === 'site_bespoke' ? ' — un site sur mesure compte 1 à 3 appels (génération + corrections)' : ''}.` }

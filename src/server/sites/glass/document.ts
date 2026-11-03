@@ -92,7 +92,7 @@ export async function renderGlassDocument(cfg: SiteConfig, opts: DocumentOptions
 /** Hash each trusted inline script; never allow arbitrary inline or same-origin application scripts. */
 export function glassCsp(html: string): string {
   const hashes = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(m => `'sha256-${createHash('sha256').update(m[1]!).digest('base64')}'`)
-  return ["default-src 'none'", `script-src data: ${hashes.join(' ')}`, "style-src 'unsafe-inline'", 'font-src data:', 'img-src data: https:', 'frame-src https://www.openstreetmap.org', "connect-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'self'"].join('; ')
+  return ["default-src 'none'", `script-src data: ${hashes.join(' ')}`, "style-src 'unsafe-inline' https://fonts.googleapis.com", 'font-src data: https://fonts.gstatic.com', 'img-src data: https:', 'frame-src https://www.openstreetmap.org', "connect-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'self'"].join('; ')
 }
 
 const OVERRIDES = `

@@ -73,12 +73,12 @@ bash LANCER-MAC.command
 
 1. Recherchez des prospects ou importez une liste dans la base de prospects.
 2. Ouvrez **Générateur de sites** et sélectionnez un prospect.
-3. Dans **Moteur**, choisissez **3D Glass — verre interactif (sans IA)**.
-4. Lancez la génération, puis ouvrez le site créé.
-5. Modifiez **Objet 3D**, **Principale** et **Accent** dans l’éditeur, puis enregistrez.
+3. Connectez votre IA une première fois dans **Paramètres → IA** (Claude, Codex ou API).
+4. Cliquez sur **Créer le site sur mesure**, puis ouvrez le site créé.
+5. Dans l’éditeur sur mesure, demandez vos corrections par texte : la page et sa sculpture sont personnalisées.
 6. Utilisez **Démo publique** pour voir le résultat ou **Export ZIP** pour récupérer le site.
 
-La génération 3D ne nécessite aucune clé IA. Les recherches réelles nécessitent Internet.
+La génération personnalisée nécessite une IA connectée ; un abonnement Claude/Codex peut être utilisé sans clé API. Les recherches réelles nécessitent Internet.
 Les emails restent en mode sandbox : aucun vrai email n’est envoyé.
 La démo `localhost` est accessible sur votre Mac ; l’export permet ensuite d’héberger le
 site. Le mode de réduction des animations du Mac peut afficher la version sans animation.

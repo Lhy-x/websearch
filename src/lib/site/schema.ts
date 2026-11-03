@@ -55,6 +55,7 @@ export const sectionSchema = z.discriminatedUnion('type', [
 
 export const siteConfigSchema = z.object({
   schemaVersion: z.literal(1),
+  glass3d: z.object({ shape: z.enum(['spark', 'cloud', 'bolt', 'home', 'cross', 'bloom', 'shield', 'gear', 'prism', 'ring', 'code', 'palette']) }).optional(),
   templateId: text(40),
   layout: z.enum(LAYOUTS),
   style: z.enum(STYLES),

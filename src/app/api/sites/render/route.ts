@@ -1,5 +1,6 @@
 import { websiteVersionSchema, isHtmlSite } from '@/lib/site/bespoke-schema'
 import { adminRoute } from '@/server/http/route'
+import { renderGlassDocument } from '@/server/sites/glass/document'
 import { renderSiteDocument } from '@/server/sites/html'
 import { renderBespokeDocument } from '@/server/sites/bespoke/document'
 import { sanitizeSiteHtml } from '@/server/sites/bespoke/sanitize'
@@ -8,6 +9,6 @@ import { sanitizeSiteHtml } from '@/server/sites/bespoke/sanitize'
 export const POST = adminRoute(async ({ body }) => {
   const html = isHtmlSite(body)
     ? renderBespokeDocument({ ...body, html: sanitizeSiteHtml(body.html, body.media.map((m) => m.url)).html }, { mode: 'editor' })
-    : renderSiteDocument(body, { mode: 'editor', banner: null })
+    : body.glass3d ? await renderGlassDocument(body, { mode: 'editor', banner: null }) : renderSiteDocument(body, { mode: 'editor', banner: null })
   return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8' } })
 }, websiteVersionSchema)

@@ -2,6 +2,7 @@ import { sql } from '../core/db'
 import { putObject } from '../core/storage'
 import { getBrowser } from '../enrich/browser'
 import { getWebsiteVersion } from './service'
+import { isHtmlSite } from '@/lib/site/bespoke-schema'
 import { renderVersion } from './render-any'
 
 /**
@@ -12,7 +13,8 @@ export async function captureWebsite(websiteId: string): Promise<{ version: numb
   const v = await getWebsiteVersion(websiteId)
   if (!v) throw new Error('Aucune version à capturer')
   const html = await renderVersion(v.config, 'preview', null)
-  const browser = await getBrowser()
+  const glass = !isHtmlSite(v.config) && !!v.config.glass3d
+  const browser = await getBrowser({ softwareWebGL: glass })
   const out: { kind: string; path: string; mime: string; size: number }[] = []
   const shoot = async (kind: string, viewport: { width: number; height: number }, scale: number, fullPage: boolean, mobile = false) => {
     const ctx = await browser.newContext({ viewport, deviceScaleFactor: scale, isMobile: mobile })
@@ -20,6 +22,10 @@ export async function captureWebsite(websiteId: string): Promise<{ version: numb
     try {
       await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 20_000 })
       await page.waitForLoadState('load', { timeout: 6000 }).catch(() => undefined)
+      if (glass) {
+        await page.waitForFunction(() => !!document.documentElement.dataset.glassState, undefined, { timeout: 20_000 })
+        await page.waitForTimeout(1200)
+      }
       const buf = await page.screenshot({ type: 'jpeg', quality: 78, fullPage })
       const path = `sites/${websiteId}/v${v.version}/${kind}.jpg`
       await putObject(path, buf)

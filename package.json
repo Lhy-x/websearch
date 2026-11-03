@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "setup:local": "node scripts/setup-local.mjs",
+    "dev:local": "node scripts/start-local.mjs",
     "build": "next build",
     "start": "next start",
     "worker": "tsx src/worker/main.ts",

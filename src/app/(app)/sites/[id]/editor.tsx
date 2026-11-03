@@ -122,6 +122,9 @@ export function Editor({ site, initial, versions, shots }: Props) {
           <Card>
             <CardHeader title="Design" />
             <CardBody className="space-y-3">
+              <Field label="Expérience"><Select value={cfg.glass3d ? 'glass3d' : 'static'} onChange={(e) => update(c => { if (e.target.value === 'glass3d') c.glass3d = { shape: 'spark' }; else delete c.glass3d })}><option value="static">Site classique</option><option value="glass3d">3D Glass interactive</option></Select></Field>
+              {cfg.glass3d ? <Field label="Objet 3D"><Select value={cfg.glass3d.shape} onChange={(e) => update(c => { c.glass3d = { shape: e.target.value as NonNullable<SiteConfig['glass3d']>['shape'] } })}>{Object.entries({spark:'Étoile',cloud:'Nuage',bolt:'Éclair',home:'Maison',cross:'Croix',bloom:'Fleur',shield:'Bouclier',gear:'Engrenage',prism:'Prisme',ring:'Anneau',code:'Code',palette:'Palette'}).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</Select></Field> : null}
+              {cfg.glass3d ? <Notice tone="info" title="Scène cinématique">Présentation et premières prestations dans la scène ; tous les textes restent accessibles dans « Toutes les informations ». Principale et Accent pilotent le verre et le fond. La scène utilise Space Grotesk.</Notice> : null}
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Template">
                   <Select value={cfg.templateId} onChange={(e) => update((c) => { const t = TEMPLATE_BY_ID.get(e.target.value)!; c.templateId = t.id; c.layout = t.layout; c.theme = applyStyle(t.theme, c.style) })}>
@@ -231,7 +234,7 @@ export function Editor({ site, initial, versions, shots }: Props) {
             </div>
           </div>
           <div className="grid place-items-center rounded-xl border border-border bg-panel-2 p-3">
-            <iframe title="Aperçu du site" sandbox="" srcDoc={html} className="rounded-lg border border-border bg-white" style={{ width: device === 'mobile' ? 390 : '100%', height: '78vh' }} />
+            <iframe title="Aperçu du site" sandbox={cfg.glass3d ? "allow-scripts allow-popups" : ""} srcDoc={html} className="rounded-lg border border-border bg-white" style={{ width: device === 'mobile' ? 390 : '100%', height: '78vh' }} />
           </div>
         </div>
       </div>

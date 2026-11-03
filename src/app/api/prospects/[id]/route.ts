@@ -47,7 +47,7 @@ export const PATCH = adminRoute(async ({ params, body }) => {
 const actionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('enrich') }),
   z.object({ action: z.literal('audit') }),
-  z.object({ action: z.literal('generate_site'), templateId: z.string().optional().nullable(), style: z.string().optional().nullable(), generator: z.enum(['auto', 'ai', 'deterministic']).default('auto') }),
+  z.object({ action: z.literal('generate_site'), templateId: z.string().optional().nullable(), style: z.string().optional().nullable(), generator: z.enum(['auto', 'bespoke', 'ai', 'deterministic', 'glass3d']).default('auto') }),
   z.object({ action: z.literal('proposal'), websiteId: z.string().uuid().optional().nullable(), offerId: z.string().uuid().optional().nullable(), strategyId: z.string().uuid().optional().nullable() }),
   z.object({ action: z.literal('set_status'), status: z.enum(PIPELINE.map((p) => p.id) as [string, ...string[]]) }),
   z.object({ action: z.literal('confirm_no_website'), note: z.string().max(300).optional() }),

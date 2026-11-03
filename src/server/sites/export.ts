@@ -6,6 +6,8 @@ import { SITE_CSS } from '@/lib/site/render/site-css'
 import type { SiteConfig } from '@/lib/site/schema'
 import { isHtmlSite, type WebsiteVersionData } from '@/lib/site/bespoke-schema'
 import { renderBespokeDocument } from './bespoke/document'
+import { renderGlassDocument } from './glass/document'
+import { readFile } from 'node:fs/promises'
 import { renderSiteDocument } from './html'
 
 /**
@@ -18,6 +20,15 @@ export async function exportSiteZip(v: WebsiteVersionData, opts: { includeMedia?
     { name: 'site.json', data: JSON.stringify(v, null, 2) },
     { name: 'README.txt', data: `Site sur mesure « ${v.businessName} » — fichier unique index.html (CSS intégré, aucun JavaScript), prêt pour tout hébergement statique.\nVérifiez les prestations et les textes avec le client avant publication.\n` },
   ], [])
+  if (v.glass3d) {
+    const files = [
+      { name: 'index.html', data: await renderGlassDocument(v, { mode: 'export' }) },
+      { name: 'site.json', data: JSON.stringify(v, null, 2) },
+      { name: 'README.txt', data: 'Site 3D Glass autonome : ouvrez index.html ou hébergez-le sur un serveur statique. WebGL 2 requis pour la 3D. Une version lisible reste disponible sans JavaScript et en mode mouvement réduit. Les liens de contact ouvrent le téléphone ou la messagerie ; aucun formulaire serveur. Les médias ajoutés restent des liens distants. Vérifiez les textes et les prestations avant publication. Voir PROVENANCE.md et les licences jointes.\n' },
+    ]
+    for (const name of ['licenses/Three-MIT.txt', 'licenses/Space-Grotesk-OFL.txt', 'PROVENANCE.md', 'SOURCES.md']) files.push({ name, data: await readFile(`vendor/premium-3d-glass/${name}`, 'utf8') })
+    return zip(slugify(v.business.name) || 'site-3d', files, [])
+  }
   const cfg: SiteConfig = v
   const warnings: string[] = []
   const files: { name: string; data: Buffer | string }[] = []

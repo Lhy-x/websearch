@@ -31,7 +31,7 @@ export function GeneratorClient({ candidates, preselect, jobs }: { candidates: C
   }, [preselect])
   const chosen = [...sel.ids]
   const count = chosen.length * variants
-  const est = useQuery({ queryKey: ['est', count, generator], queryFn: () => api<{ ai: boolean; model: string | null; perItemUsd: number | null; totalUsd: number | null; note: string }>(`/api/estimate?task=${generator === 'ai' ? 'site_generation' : 'site_bespoke'}&count=${Math.max(1, count)}`), enabled: generator !== 'deterministic' })
+  const est = useQuery({ queryKey: ['est', count, generator], queryFn: () => api<{ ai: boolean; model: string | null; perItemUsd: number | null; totalUsd: number | null; note: string }>(`/api/estimate?task=${generator === 'ai' ? 'site_generation' : 'site_bespoke'}&count=${Math.max(1, count)}`), enabled: !['deterministic', 'glass3d'].includes(generator) })
   useEffect(() => {
     if (jobs.some((j) => ['PENDING', 'RUNNING', 'RETRYING'].includes(j.status))) {
       const t = setTimeout(() => router.refresh(), 2500)
@@ -63,9 +63,10 @@ export function GeneratorClient({ candidates, preselect, jobs }: { candidates: C
           <CardBody className="space-y-3">
             <Field label="Template"><Select value={templateId} onChange={(e) => setTemplateId(e.target.value)}><option value="">Automatique (selon le secteur)</option>{TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</Select></Field>
             <Field label="Style imposé"><Select value={style} onChange={(e) => setStyle(e.target.value)}><option value="">Libre</option>{STYLES.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}</Select></Field>
-            <Field label="Moteur"><Select value={generator} onChange={(e) => setGenerator(e.target.value)}><option value="auto">Automatique (sur mesure si l’IA est disponible)</option><option value="bespoke">Sur mesure (IA — qualité maximale)</option><option value="ai">Template + textes IA</option><option value="deterministic">Template déterministe (gratuit)</option></Select></Field>
+            <Field label="Moteur"><Select value={generator} onChange={(e) => setGenerator(e.target.value)}><option value="auto">Automatique (sur mesure si l’IA est disponible)</option><option value="glass3d">3D Glass — verre interactif (sans IA)</option><option value="bespoke">Sur mesure (IA — qualité maximale)</option><option value="ai">Template + textes IA</option><option value="deterministic">Template déterministe (gratuit)</option></Select></Field>
+            {generator === 'glass3d' ? <Notice tone="info" title="Vraie 3D interactive">Verre, fragments au défilement et réaction au curseur. Objet et couleurs modifiables dans l’éditeur. Version sans animation incluse.</Notice> : null}
             <Field label="Variantes par prospect" hint="Plusieurs styles différents pour le même prospect"><Select value={variants} onChange={(e) => setVariants(Number(e.target.value))}>{[1, 2, 3].map((n) => <option key={n} value={n}>{n}</option>)}</Select></Field>
-            {generator !== 'deterministic' && est.data ? (
+            {!['deterministic', 'glass3d'].includes(generator) && est.data ? (
               <Notice tone="info" title={est.data.ai ? `Coût estimé : ${est.data.totalUsd != null ? fmtUsd(est.data.totalUsd) : 'inconnu'} pour ${count} génération(s)` : 'Aucun coût IA'}>{est.data.note}</Notice>
             ) : null}
             <Button

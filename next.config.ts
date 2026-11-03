@@ -11,6 +11,7 @@ const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   output: 'standalone',
+  outputFileTracingIncludes: { '/*': ['./vendor/premium-3d-glass/**/*'] },
   distDir: process.env.NEXT_DIST_DIR || '.next',
   serverExternalPackages: ['playwright', 'postgres', 'imapflow', 'nodemailer', 'mailparser', 'archiver', 'exceljs', 'hyparquet', 'hyparquet-compressors'],
   async headers() {

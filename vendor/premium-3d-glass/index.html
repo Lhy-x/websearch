@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="{{LANG}}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{TITLE}}</title>
+<meta name="description" content="{{META_DESCRIPTION}}">
+<link rel="stylesheet" href="./css/styles.css?v={{VERSION}}">
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.js",
+    "three/examples/jsm/loaders/SVGLoader.js": "./vendor/SVGLoader.js"
+  }
+}
+</script>
+</head>
+<body>
+<div class="loader" id="loader" role="status" aria-live="polite">
+  <div class="loader-inner">
+    <span class="loader-value"><span id="loader-count">00</span><span class="loader-unit">%</span></span>
+    <span class="loader-bar"><span id="loader-fill"></span></span>
+    <span class="loader-hint">{{LOADER_HINT}}</span>
+  </div>
+</div>
+<script>
+(function () {
+  var el = document.getElementById('loader'), count = document.getElementById('loader-count'), fill = document.getElementById('loader-fill');
+  var start = performance.now(), ready = false, rampAt = 0, shownAtRamp = 0, shown = 0, finished = false;
+  var MIN_HOLD = 0, RAMP = 180;   // ms: minimum time on screen, then the run to 100
+  document.body.classList.add('is-loading');
+  function finish() {
+    if (finished) return;
+    finished = true;
+    count.textContent = '100';
+    fill.style.transform = 'scaleX(1)';
+    el.classList.add('is-done');
+    document.body.classList.remove('is-loading');
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 900);
+  }
+  function tick(now) {
+    if (finished) return;
+    if (ready && !rampAt && now - start >= MIN_HOLD) { rampAt = now; shownAtRamp = shown; }
+    if (rampAt) {
+      var k = Math.min(1, (now - rampAt) / RAMP);
+      shown = shownAtRamp + (100 - shownAtRamp) * (1 - Math.pow(1 - k, 3));
+    } else {
+      // Time-based pseudo progress while the modules and the scene are prepared.
+      shown = 92 * (1 - Math.exp(-(now - start) / 1600));
+    }
+    count.textContent = String(Math.round(shown)).padStart(2, '0');
+    fill.style.transform = 'scaleX(' + (shown / 100) + ')';
+    if (rampAt && shown >= 99.5) { finish(); return; }
+    requestAnimationFrame(tick);
+  }
+  window.__glassLoader = { done: function () { ready = true; } };
+  requestAnimationFrame(tick);
+  setTimeout(function () { window.__glassLoader.done(); }, 15000);   // never trap the visitor
+  setTimeout(finish, 17000);
+})();
+</script>
+<div class="cursor-inner"></div>
+<div class="cursor-outer"><span class="cursor-ticks"><span></span><span></span><span></span><span></span></span></div>
+<div class="cursor-label" aria-hidden="true">000</div>
+<div class="cinematic-container">
+<div class="main-header">
+  <a class="brand" href="#slide-1">
+    <span class="brand-mark" aria-hidden="true">{{BRAND_MARK}}</span>
+    <span class="brand-text">{{BRAND}}</span>
+  </a>
+  <nav class="header-nav" aria-label="{{NAV_LABEL}}">
+    <a href="#slide-1" class="nav-link is-active">{{NAV_1}}</a>
+    <a href="#slide-2" class="nav-link">{{NAV_2}}</a>
+    <a href="#slide-3" class="nav-link">{{NAV_3}}</a>
+    <a href="#slide-4" class="nav-link">{{NAV_4}}</a>
+  </nav>
+  <div class="header-actions">
+    <span class="header-counter" aria-hidden="true"><span id="brand-chapter">01</span><span class="counter-sep"></span>05</span>
+    <a href="#contact" class="contact-btn">{{NAV_CONTACT}} <span class="btn-arrow">&#8599;</span></a>
+  </div>
+</div>
+
+<div class="slide" id="slide-1">
+  <h2 class="slide-title">{{T1_A}} <br>{{T1_B}}</h2>
+  <div class="desc-row">
+    <p class="slide-desc col-1">{{LEAD_1}}</p>
+  </div>
+</div>
+
+<div class="slide" id="slide-2">
+  <h2 class="slide-title">{{T2_A}} <br>{{T2_B}}</h2>
+  <p class="slide-desc">{{ABOUT}}</p>
+</div>
+
+<div class="slide" id="slide-3">
+  <h2 class="slide-title">{{T3_A}} <br>{{T3_B}}</h2>
+  <ul class="benefits">
+    <li class="benefit"><span class="benefit-icon" aria-hidden="true">{{ICON_1}}</span><p>{{BENEFIT_1}}</p></li>
+    <li class="benefit"><span class="benefit-icon" aria-hidden="true">{{ICON_2}}</span><p>{{BENEFIT_2}}</p></li>
+    <li class="benefit"><span class="benefit-icon" aria-hidden="true">{{ICON_3}}</span><p>{{BENEFIT_3}}</p></li>
+    <li class="benefit"><span class="benefit-icon" aria-hidden="true">{{ICON_4}}</span><p>{{BENEFIT_4}}</p></li>
+  </ul>
+</div>
+
+<div class="slide" id="slide-4">
+  <h2 class="slide-title">{{T4_A}} <br>{{T4_B}}</h2>
+  <p class="slide-desc">{{RESULTS_LEAD}}</p>
+  <dl class="figures">
+    <div class="figure"><dt><span class="figure-value" data-count="{{F1_VALUE}}" data-decimals="{{F1_DECIMALS}}">{{F1_VALUE}}</span>{{F1_SUFFIX}}</dt><dd>{{F1_LABEL}}</dd></div>
+    <div class="figure"><dt><span class="figure-value" data-count="{{F2_VALUE}}" data-decimals="{{F2_DECIMALS}}">{{F2_VALUE}}</span>{{F2_SUFFIX}}</dt><dd>{{F2_LABEL}}</dd></div>
+    <div class="figure"><dt><span class="figure-value" data-count="{{F3_VALUE}}" data-decimals="{{F3_DECIMALS}}">{{F3_VALUE}}</span>{{F3_SUFFIX}}</dt><dd>{{F3_LABEL}}</dd></div>
+  </dl>
+</div>
+</div>
+
+<div class="scroll-stage" aria-hidden="true"></div>
+<section class="contact" id="contact" aria-labelledby="contact-title">
+  <div class="contact-inner">
+    <div class="contact-intro">
+      <p class="contact-eyebrow"><span class="eyebrow-dot"></span>{{NAV_CONTACT}} / 05</p>
+      <h2 class="contact-title" id="contact-title"><span class="line"><span class="line-inner">{{CT_A}}</span></span><span class="line muted"><span class="line-inner">{{CT_B}}</span></span></h2>
+      <p class="contact-lead">{{CONTACT_LEAD}}</p>
+      <a class="contact-mail" href="mailto:{{EMAIL}}">{{EMAIL}} <span class="arrow">&#8599;</span></a>
+    </div>
+    <form class="contact-card" id="contact-form" data-email="{{EMAIL}}">
+      <div class="card-head"><span>{{FORM_TITLE}}</span><span class="arrow">&#8599;</span></div>
+      <div class="field-grid">
+        <label class="field"><span class="field-label">{{F_NAME}} <em>*</em></span><input type="text" name="name" placeholder="{{F_NAME_PLACEHOLDER}}" autocomplete="name" required></label>
+        <label class="field"><span class="field-label">{{F_EMAIL}} <em>*</em></span><input type="email" name="email" placeholder="{{F_EMAIL_PLACEHOLDER}}" autocomplete="email" required></label>
+        <label class="field field-wide"><span class="field-label">{{F_COMPANY}} <small>{{F_OPTIONAL}}</small></span><input type="text" name="company" placeholder="{{F_COMPANY_PLACEHOLDER}}" autocomplete="organization"></label>
+        <label class="field field-wide"><span class="field-label">{{F_PROJECT}} <em>*</em></span><textarea name="project" rows="4" placeholder="{{F_PROJECT_PLACEHOLDER}}" required></textarea></label>
+      </div>
+      <div class="card-foot">
+        <p class="card-note">{{FORM_NOTE}}</p>
+        <button type="submit" class="pill-btn"><span class="btn-label">{{FORM_BUTTON}}</span> <span class="arrow">&#8599;</span></button>
+      </div>
+    </form>
+  </div>
+  <footer class="contact-footer">
+    <span>&copy; {{YEAR}} &mdash; {{BRAND}}</span>
+    <span class="footer-spec">{{FOOTER_SPEC}}</span>
+    <a href="#slide-1" class="footer-top">{{FOOTER_TOP}} <span aria-hidden="true">&uarr;</span></a>
+  </footer>
+</section>
+<div class="grid-horizontal-line"></div>
+<div class="header-progress" aria-hidden="true"><span id="header-progress-fill"></span></div>
+<div class="story-progress" aria-hidden="true">
+  <div class="story-dashes">
+    <div class="story-dash"><div class="story-dash-fill" id="dash-fill-1"></div></div>
+    <div class="story-dash"><div class="story-dash-fill" id="dash-fill-2"></div></div>
+    <div class="story-dash"><div class="story-dash-fill" id="dash-fill-3"></div></div>
+    <div class="story-dash"><div class="story-dash-fill" id="dash-fill-4"></div></div>
+  </div>
+</div>
+<canvas id="webgl"></canvas>
+<script type="module" src="./js/app.js?v={{VERSION}}"></script>
+</body>
+</html>

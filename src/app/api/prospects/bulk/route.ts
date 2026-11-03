@@ -15,7 +15,7 @@ const schema = z.object({
   status: z.string().optional(),
   templateId: z.string().optional(),
   style: z.string().optional(),
-  generator: z.enum(['auto', 'bespoke', 'ai', 'deterministic']).optional(),
+  generator: z.enum(['auto', 'bespoke', 'ai', 'deterministic', 'glass3d']).optional(),
 })
 
 /** Bulk actions. Long work is enqueued as jobs; quick DB updates are applied directly. */

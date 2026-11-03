@@ -9,6 +9,10 @@ Pas d'inscription publique, pas de multi-tenant, pas d'abonnements : un seul adm
 
 > État réel du projet (testé / partiel / non vérifiable ici) : voir **[PROGRESS.md](PROGRESS.md)**.
 
+## Démarrage simple sur Mac, sans Docker
+
+Voir le [tutoriel pas à pas](docs/DEMARRAGE-PC.md) : `INSTALLER-MAC.command` une première fois, puis `LANCER-MAC.command`.
+
 ## Démarrage rapide (macOS)
 
 ```bash
@@ -60,6 +64,10 @@ PostgreSQL + migrations + dashboard (port 3000, lié à 127.0.0.1) + worker (ima
 | `npm run test:e2e` | Parcours de référence complet dans Chromium (base `prospectforge_e2e`, email sandbox) |
 | `npm run typecheck` | TypeScript strict |
 
+## Sites 3D interactifs
+
+Le moteur **3D Glass** génère des sites avec verre Three.js, réactions au curseur et fragmentation au défilement. Choisir ce moteur dans le générateur ou depuis une fiche prospect, puis modifier l’objet et les couleurs dans l’éditeur. Export HTML autonome, sans clé IA. Voir [Sites 3D Glass](docs/3D-GLASS.md).
+
 ## Parcours principal
 
 1. **Recherche de prospects** : pays, ville/code postal (ou coordonnées), rayon, secteur, mots-clés, filtres de présence web.
@@ -67,7 +75,7 @@ PostgreSQL + migrations + dashboard (port 3000, lié à 127.0.0.1) + worker (ima
 2. **Fiche prospect** : chaque coordonnée affiche sa source, son statut (publié par une source / non vérifié / invalide)
    et ses dates ; le score est expliqué ligne par ligne.
 3. **Générer un site** : template selon le secteur (15 templates, 7 structures), contenu IA si configurée
-   (sinon génération déterministe sans coût), capture automatique, démo publique `/preview/<jeton>` (noindex, sans JS,
+   (sinon génération déterministe sans coût), capture automatique, démo publique `/preview/<jeton>` (noindex, sans JS sauf moteur 3D isolé,
    expirable, désactivable).
 4. **Éditeur** : textes, couleurs, polices, sections, médias sous licence, versions, export ZIP statique.
 5. **Proposition** : 8 variantes d'emails fondées uniquement sur les faits vérifiés + lien de démo.

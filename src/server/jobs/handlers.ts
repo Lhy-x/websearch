@@ -127,7 +127,7 @@ export const HANDLERS: Record<JobType, Handler> = {
 
   async 'website.generate'(p, ctx) {
     const input = z
-      .object({ businessId: uuid, templateId: z.string().optional().nullable(), style: z.string().optional().nullable(), generator: z.enum(['auto', 'bespoke', 'ai', 'deterministic']).default('auto') })
+      .object({ businessId: uuid, templateId: z.string().optional().nullable(), style: z.string().optional().nullable(), generator: z.enum(['auto', 'bespoke', 'ai', 'deterministic', 'glass3d']).default('auto') })
       .parse(p)
     // auto: bespoke when an AI is available and the setting says so; template generation otherwise
     let mode = input.generator

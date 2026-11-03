@@ -16,7 +16,7 @@ export interface GenerateOptions {
   templateId?: string | null
   style?: SiteStyle | null
   /** auto: AI if configured (and not LOW_COST), deterministic otherwise */
-  generator?: 'auto' | 'ai' | 'deterministic'
+  generator?: 'auto' | 'ai' | 'deterministic' | 'glass3d'
   jobId?: string | null
 }
 
@@ -38,6 +38,10 @@ export async function generateWebsite(businessId: string, opts: GenerateOptions 
   const templateId = opts.templateId && TEMPLATE_BY_ID.has(opts.templateId) ? opts.templateId : facts.templateId
   const skeleton = buildDeterministicConfig(facts, { templateId, style: opts.style ?? undefined, disclaimer: settings.sites.demoDisclaimer, language: settings.sites.language })
   const mode = opts.generator ?? 'auto'
+  if (mode === 'glass3d') {
+    const shape = /electric|électric/.test(facts.sectorLabel.toLowerCase()) ? 'bolt' : /bâtiment|immobilier/.test(facts.sectorLabel.toLowerCase()) ? 'home' : /jardin|fleur/.test(facts.sectorLabel.toLowerCase()) ? 'bloom' : 'spark'
+    skeleton.glass3d = { shape }
+  }
   const avail = await aiAvailability()
   const useAi = mode === 'ai' || (mode === 'auto' && avail.available && settings.ai.costMode !== 'LOW_COST')
   if (mode === 'ai' && !avail.available) throw new NotConfiguredError('IA', avail.reason ?? 'fournisseur non configuré')
@@ -47,7 +51,7 @@ export async function generateWebsite(businessId: string, opts: GenerateOptions 
   const expires = new Date(Date.now() + settings.sites.previewTtlDays * 86400_000)
   const [site] = await db<{ id: string }[]>`
     insert into generated_websites (business_id, template_id, style, status, preview_token, preview_expires_at, generator)
-    values (${businessId}, ${templateId}, ${skeleton.style}, 'GENERATING', ${token}, ${expires}, ${useAi ? 'ai:' + avail.provider : 'deterministic'})
+    values (${businessId}, ${templateId}, ${skeleton.style}, 'GENERATING', ${token}, ${expires}, ${mode === 'glass3d' ? 'glass3d' : useAi ? 'ai:' + avail.provider : 'deterministic'})
     returning id`
   const websiteId = site!.id
   try {
@@ -77,8 +81,8 @@ export async function generateWebsite(businessId: string, opts: GenerateOptions 
     await db`update generated_websites set status = 'READY', current_version = 1, style = ${config.style}, model = ${model}, cost_usd = ${cost}, duration_ms = ${duration} where id = ${websiteId}`
     await db`update businesses set pipeline_status = 'WEBSITE_GENERATED'
              where id = ${businessId} and pipeline_status in ('NEW','DISCOVERED','ENRICHED','QUALIFIED')`
-    await auditLog({ action: 'website.generated', entityType: 'business', entityId: businessId, data: { websiteId, generator: useAi ? 'ai' : 'deterministic', model, cost, rejected: report?.rejected } })
-    return { websiteId, version: 1, generator: useAi ? `ai:${avail.provider}` : 'deterministic', model, costUsd: cost, durationMs: duration, report, previewToken: token }
+    await auditLog({ action: 'website.generated', entityType: 'business', entityId: businessId, data: { websiteId, generator: mode === 'glass3d' ? 'glass3d' : useAi ? 'ai' : 'deterministic', model, cost, rejected: report?.rejected } })
+    return { websiteId, version: 1, generator: mode === 'glass3d' ? 'glass3d' : useAi ? `ai:${avail.provider}` : 'deterministic', model, costUsd: cost, durationMs: duration, report, previewToken: token }
   } catch (e) {
     await db`update generated_websites set status = 'ERROR', error = ${(e as Error).message?.slice(0, 1000) ?? 'erreur'} where id = ${websiteId}`
     throw e

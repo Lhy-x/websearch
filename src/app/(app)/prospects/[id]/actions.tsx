@@ -81,7 +81,7 @@ export function GenerateDialog({ open, onOpenChange, onSubmit, count }: { open: 
         <Field label="Template"><Select name="templateId" defaultValue=""><option value="">Automatique (selon le secteur)</option>{TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</Select></Field>
         <Field label="Style" hint="Pour le sur mesure, sert d’orientation (l’IA garde la main sur le parti pris)."><Select name="style" defaultValue=""><option value="">Choix du template / de l’IA</option>{STYLES.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}</Select></Field>
         <Field label="Moteur" hint="« Sur mesure » : l’IA conçoit un site unique (guide frontend-design) puis il est contrôlé et corrigé automatiquement. « Template » : structure prédéfinie, textes IA ou déterministes.">
-          <Select name="generator" defaultValue="auto"><option value="auto">Automatique (sur mesure si l’IA est disponible)</option><option value="bespoke">Sur mesure (IA — qualité maximale)</option><option value="ai">Template + textes IA</option><option value="deterministic">Template déterministe (sans IA)</option></Select>
+          <Select name="generator" defaultValue="auto"><option value="auto">Automatique (sur mesure si l’IA est disponible)</option><option value="glass3d">3D Glass — verre interactif (sans IA)</option><option value="bespoke">Sur mesure (IA — qualité maximale)</option><option value="ai">Template + textes IA</option><option value="deterministic">Template déterministe (sans IA)</option></Select>
         </Field>
         <Button type="submit"><Sparkles />Générer</Button>
       </form>

@@ -1,3 +1,5 @@
+import { isHtmlSite } from '@/lib/site/bespoke-schema'
+import { glassCsp } from '@/server/sites/glass/document'
 import { cookies } from 'next/headers'
 import { sql } from '@/server/core/db'
 import { lookupPreview } from '@/server/sites/service'
@@ -40,7 +42,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
     }
   }
   const html = await renderVersion(p.config, 'preview', `Démonstration non officielle — maquette proposée à ${businessNameOf(p.config)}, réalisée de façon indépendante.`)
+  const policy = !isHtmlSite(p.config) && p.config.glass3d ? glassCsp(html) + '; sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox' : CSP
   return new Response(html, {
-    headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex, nofollow, noarchive', 'content-security-policy': CSP, 'cache-control': 'private, no-store', 'referrer-policy': 'no-referrer' },
+    headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex, nofollow, noarchive', 'content-security-policy': policy, 'cache-control': 'private, no-store', 'referrer-policy': 'no-referrer' },
   })
 }

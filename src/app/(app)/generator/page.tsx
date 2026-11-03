@@ -9,7 +9,7 @@ export default async function GeneratorPage({ searchParams }: { searchParams: Pr
   const sp = await searchParams
   const candidates = await sql()<{ id: string; name: string; city: string | null; sector: string | null; score: number | null; web_presence_status: string; sites: number }[]>`
     select b.id, b.name, b.city, b.sector, b.score, b.web_presence_status,
-      (select count(*)::int from generated_websites g where g.business_id = b.id and g.status = 'READY') sites
+      (select count(*)::int from generated_websites g where g.business_id = b.id and g.deleted_at is null and g.status = 'READY') sites
     from businesses b where b.merged_into is null and b.archived_at is null and not b.do_not_contact
       and (${sp.business ?? null}::uuid is null and b.score >= 35 or b.id = ${sp.business ?? null}::uuid)
     order by (b.id = ${sp.business ?? null}::uuid) desc nulls last, sites asc, b.score desc nulls last limit 100`

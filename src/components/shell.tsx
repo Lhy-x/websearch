@@ -1,5 +1,5 @@
 'use client'
-import { BarChart3, Bot, MessageSquareText, Building2, Globe, Inbox, KanbanSquare, LayoutDashboard, LogOut, Megaphone, Moon, Search, Settings, ShieldAlert, Sparkles, Sun, Target, Wand2, Pause } from 'lucide-react'
+import { CreditCard, BarChart3, Bot, MessageSquareText, Building2, Globe, Inbox, KanbanSquare, LayoutDashboard, LogOut, Megaphone, Moon, Search, Settings, ShieldAlert, Sparkles, Sun, Target, Wand2, Pause } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
@@ -7,12 +7,13 @@ import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 const NAV = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/', label: 'Accueil', icon: LayoutDashboard },
   { href: '/search', label: 'Recherche de prospects', icon: Search },
-  { href: '/prospects', label: 'Base de prospects', icon: Building2 },
+  { href: '/prospects', label: 'Prospects', icon: Building2 },
   { href: '/qualification', label: 'Qualification', icon: Target },
   { href: '/generator', label: 'Générateur de sites', icon: Wand2 },
-  { href: '/sites', label: 'Sites générés', icon: Globe },
+  { href: '/sales', label: 'Ventes', icon: CreditCard },
+  { href: '/sites', label: 'Démos', icon: Globe },
   { href: '/campaigns', label: 'Campagnes', icon: Megaphone },
   { href: '/inbox', label: 'Boîte de réception', icon: Inbox },
   { href: '/crm', label: 'CRM', icon: KanbanSquare },
@@ -27,6 +28,9 @@ export function Shell({ children, flags, unread }: { children: React.ReactNode; 
   const router = useRouter()
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const [advanced,setAdvanced]=useState(false)
+  const primary=['/','/prospects','/sites','/sales','/settings']
+  const visibleNav=[...primary.map(href=>NAV.find(n=>n.href===href)!),...NAV.filter(n=>!primary.includes(n.href)&&(advanced||n.href===path))]
   const [q, setQ] = useState('')
   useEffect(() => setMounted(true), [])
   return (
@@ -37,7 +41,7 @@ export function Shell({ children, flags, unread }: { children: React.ReactNode; 
           <span><span className="block text-[15px] font-semibold tracking-tight">ProspectForge</span><span className="mt-0.5 block text-[9px] font-semibold tracking-[.24em] text-muted">L’ATELIER INDÉPENDANT</span></span>
         </div>
         <nav className="flex-1 overflow-y-auto px-3 pb-5" aria-label="Navigation principale">
-          {NAV.map((n) => {
+          {visibleNav.map((n) => {
             const active = n.href === '/' ? path === '/' : path.startsWith(n.href)
             return (
               <Link key={n.href} href={n.href} className={cn('app-nav-link mb-1 flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13px] text-muted transition-colors hover:bg-panel-2 hover:text-fg', active && 'is-active')}>
@@ -47,6 +51,7 @@ export function Shell({ children, flags, unread }: { children: React.ReactNode; 
               </Link>
             )
           })}
+          <button className="w-full px-3 py-3 text-left text-xs text-muted" onClick={()=>setAdvanced(!advanced)}>{advanced?'Moins d’options':'Options avancées'}</button>
         </nav>
         <div className="mx-4 mb-4 rounded-2xl border border-border p-2"><p className="px-3 py-3 text-[10px] font-medium tracking-[.16em] text-muted">VOTRE ESPACE PRIVÉ</p>
           <button
@@ -82,9 +87,10 @@ export function Shell({ children, flags, unread }: { children: React.ReactNode; 
           </div>
         </header>
         <nav className="flex gap-1 overflow-x-auto border-b border-border bg-panel px-2 py-1.5 lg:hidden" aria-label="Navigation mobile">
-          {NAV.map((n) => (
+          {visibleNav.map((n) => (
             <Link key={n.href} href={n.href} className={cn('min-h-11 inline-flex items-center whitespace-nowrap rounded-lg px-3 py-2 text-xs text-muted', (n.href === '/' ? path === '/' : path.startsWith(n.href)) && 'bg-panel-2 text-fg')}>{n.label}</Link>
           ))}
+          <button className="min-h-11 shrink-0 px-3 text-xs text-muted" onClick={()=>setAdvanced(!advanced)}>{advanced?'Moins':'Plus'}</button>
         </nav>
         <main className="mx-auto w-full max-w-[1540px] flex-1 px-4 py-7 lg:px-9 lg:py-9">{children}</main>
       </div>

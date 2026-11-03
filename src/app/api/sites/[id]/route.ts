@@ -1,3 +1,4 @@
+import {trashWebsite} from '@/server/sites/lifecycle'
 import { z } from 'zod'
 import { sql } from '@/server/core/db'
 import { AppError } from '@/server/core/errors'
@@ -11,12 +12,13 @@ import { exportSiteZip } from '@/server/sites/export'
 export const GET = adminRoute(async ({ params, req }) => {
   const db = sql()
   const v = new URL(req.url).searchParams.get('version')
-  const [site] = await db`select g.*, b.name business_name from generated_websites g join businesses b on b.id = g.business_id where g.id = ${params.id}`
+  const [site] = await db`select g.*, b.name business_name,b.email business_email from generated_websites g join businesses b on b.id = g.business_id where g.id = ${params.id}`
   if (!site) throw new AppError('Site introuvable', 404)
   const version = await getWebsiteVersion(params.id, v ? Number(v) : undefined)
   const versions = await db`select version, created_by, note, created_at from website_versions where website_id = ${params.id} order by version desc`
   const assets = await db`select kind, path, version, created_at from website_assets where website_id = ${params.id} order by created_at desc`
-  return { site, version, versions, assets }
+  const [proposal]=await db`select content from proposals where website_id=${params.id} order by created_at desc limit 1`
+  return { site, version, versions, assets,proposal:proposal?.content??null }
 })
 
 const putSchema = z.object({ config: z.unknown(), baseVersion: z.number().int().optional(), note: z.string().max(200).optional() })
@@ -35,6 +37,7 @@ const actionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('revise'), instruction: z.string().trim().min(3).max(2000) }),
   z.object({ action: z.literal('export'), includeMedia: z.boolean().default(true) }),
   z.object({ action: z.literal('delete') }),
+  z.object({ action: z.literal('untrash') }),
 ])
 
 export const POST = adminRoute(async ({ params, body }) => {
@@ -62,7 +65,8 @@ export const POST = adminRoute(async ({ params, body }) => {
       return new Response(new Uint8Array(z.buffer), { headers: { 'content-type': 'application/zip', 'content-disposition': `attachment; filename="${z.filename}"`, 'x-export-warnings': encodeURIComponent(z.warnings.join(' | ')) } })
     }
     case 'delete':
-      await db`delete from generated_websites where id = ${params.id}`
-      return { ok: true }
+      return trashWebsite(params.id)
+    case 'untrash':
+      return trashWebsite(params.id,true)
   }
 }, actionSchema)

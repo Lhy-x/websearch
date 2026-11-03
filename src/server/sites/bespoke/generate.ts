@@ -121,7 +121,7 @@ export async function generateBespokeWebsite(businessId: string, opts: { styleHi
 /** "Change X" — the AI revises the current bespoke version following the admin's instruction. */
 export async function reviseBespokeWebsite(websiteId: string, instruction: string, opts: { jobId?: string | null; log?: (m: string) => Promise<void> | void } = {}) {
   const db = sql()
-  const [w] = await db<{ business_id: string; current_version: number }[]>`select business_id, current_version from generated_websites where id = ${websiteId}`
+  const [w] = await db<{ business_id: string; current_version: number }[]>`select business_id, current_version from generated_websites where id = ${websiteId} and deleted_at is null`
   if (!w) throw new AppError('Site introuvable', 404)
   const [v] = await db<{ config: unknown }[]>`select config from website_versions where website_id = ${websiteId} and version = ${w.current_version}`
   const current = htmlSiteSchema.safeParse(v?.config)

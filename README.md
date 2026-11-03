@@ -68,6 +68,10 @@ PostgreSQL + migrations + dashboard (port 3000, lié à 127.0.0.1) + worker (ima
 
 Le bouton **Créer le site sur mesure** utilise le skill **Premium 3D Glass** fourni, le dossier du prospect et votre IA pour concevoir une page originale : composition, textes, palette et silhouette de verre unique. Aucun template à sélectionner. L’atelier vérifie les faits, le rendu mobile et la scène WebGL ; une IA manquante est signalée au lieu d’un remplacement par template. Connectez Claude/Codex ou votre fournisseur API une première fois dans Paramètres → IA. Voir [Atelier 3D personnalisé](docs/3D-GLASS.md).
 
+## Vendre et gérer ses démos
+
+Voir le [parcours simple : emails, Stripe, factures et corbeille](docs/VENTES.md). Les paiements sont désactivés tant que le prix unique et Stripe ne sont pas configurés.
+
 ## Parcours principal
 
 1. **Recherche de prospects** : pays, ville/code postal (ou coordonnées), rayon, secteur, mots-clés, filtres de présence web.

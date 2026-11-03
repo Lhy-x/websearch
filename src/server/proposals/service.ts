@@ -1,3 +1,4 @@
+import {billingSetup} from '../billing/stripe'
 import { sql } from '../core/db'
 import { env } from '../core/env'
 import { getSettings } from '../core/settings'
@@ -19,11 +20,12 @@ export async function loadProposalFacts(businessId: string, websiteId?: string |
   const settings = await getSettings()
   const f = await loadBusinessFacts(businessId)
   const [site] = websiteId
-    ? await db<{ preview_token: string; preview_enabled: boolean }[]>`select preview_token, preview_enabled from generated_websites where id = ${websiteId} and business_id = ${businessId}`
-    : await db<{ preview_token: string; preview_enabled: boolean }[]>`select preview_token, preview_enabled from generated_websites where business_id = ${businessId} and status = 'READY' and preview_enabled order by created_at desc limit 1`
+    ? await db<{ preview_token: string; preview_enabled: boolean }[]>`select preview_token, preview_enabled from generated_websites where id = ${websiteId} and business_id = ${businessId} and deleted_at is null and status='READY' and preview_enabled and (preview_expires_at is null or preview_expires_at>now())`
+    : await db<{ preview_token: string; preview_enabled: boolean }[]>`select preview_token, preview_enabled from generated_websites where business_id = ${businessId} and deleted_at is null and status = 'READY' and preview_enabled and (preview_expires_at is null or preview_expires_at>now()) order by created_at desc limit 1`
   const [offer] = offerId
     ? await db<{ name: string; description: string; price_cents: number | null; currency: string }[]>`select name, description, price_cents, currency from sales_offers where id = ${offerId}`
     : await db<{ name: string; description: string; price_cents: number | null; currency: string }[]>`select name, description, price_cents, currency from sales_offers where active order by created_at limit 1`
+  const billing=await billingSetup()
   return {
     businessName: f.name,
     sectorLabel: f.sectorLabel,
@@ -32,7 +34,7 @@ export async function loadProposalFacts(businessId: string, websiteId?: string |
     websiteUrl: f.websiteUrl,
     auditFindings: f.auditFindings,
     demoUrl: site?.preview_enabled ? previewUrl(site.preview_token, settings.sites.previewBaseUrl) : null,
-    offer: offer ? { name: offer.name, description: offer.description, price: formatPrice(offer.price_cents, offer.currency) } : null,
+    offer: billing.ready ? {name:billing.commerce.title,description:'Création du site présenté en démonstration',price:formatPrice(billing.commerce.priceCents,billing.commerce.currency.toUpperCase())} : offer ? { name: offer.name, description: offer.description, price: formatPrice(offer.price_cents, offer.currency) } : null,
     senderName: settings.outreach.senderName || 'Votre prénom',
     signature: settings.outreach.signature,
   }
@@ -78,6 +80,8 @@ Faits vérifiés (seules informations utilisables) : ${JSON.stringify(facts)}`,
     model = r.model
     cost = r.costUsd
   }
+  const billing=await billingSetup()
+  if(billing.ready&&facts.demoUrl){const token=facts.demoUrl.split('/').pop()!;const link=previewUrl(token,billing.base).replace('/preview/','/buy/');const line=`Si vous souhaitez commander ce site : ${formatPrice(billing.commerce.priceCents,billing.commerce.currency.toUpperCase())}. Paiement sécurisé et facture : ${link}`;for(const key of EMAIL_VARIANTS){content[key].body+='\n\n'+line}}
   const [row] = await db<{ id: string }[]>`insert into proposals (business_id, website_id, offer_id, strategy_id, content, facts, generator, model, cost_usd)
     values (${input.businessId}, ${input.websiteId ?? null}, ${input.offerId ?? null}, ${strategy?.id ?? null}, ${db.json({ ...content, rejected } as never)}, ${db.json(facts as never)}, ${generator}, ${model}, ${cost})
     returning id`

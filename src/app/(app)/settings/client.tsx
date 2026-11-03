@@ -1,4 +1,5 @@
 'use client'
+import {BillingSettings} from '@/components/billing-settings'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -28,6 +29,8 @@ const mb = (b: number) => `${(b / 1024 / 1024).toFixed(1)} Mo`
 export function SettingsClient({ settings, secrets, infra, offers, strategies, suppression }: { settings: Settings; secrets: Secrets; infra: Infra; offers: { id: string; name: string; kind: string; description: string; price_cents: number | null; active: boolean }[]; strategies: { id: string; name: string; instructions: string; tone: string; is_default: boolean }[]; suppression: { id: string; email: string | null; domain: string | null; reason: string; source: string | null; created_at: string }[] }) {
   const router = useRouter()
   const [s, setS] = useState<Settings>(settings)
+  const [tab,setTab]=useState('general')
+  const [advanced,setAdvanced]=useState(false)
   const [busy, setBusy] = useState(false)
   const patch = <K extends keyof Settings>(k: K, v: Partial<Settings[K]>) => setS((x) => ({ ...x, [k]: { ...(x[k] as object), ...v } }))
   const save = async () => {
@@ -55,15 +58,18 @@ export function SettingsClient({ settings, secrets, infra, offers, strategies, s
   const SaveBar = () => <div className="flex justify-end"><Button onClick={save} loading={busy}>Enregistrer</Button></div>
 
   return (
-    <Tabs defaultValue="ai">
+    <Tabs value={tab} onValueChange={setTab}>
       <TabsList className="flex-wrap">
-        {[['ai', 'Intelligence artificielle'], ['search', 'Recherche'], ['outreach', 'Prospection'], ['sites', 'Génération de sites'], ['scoring', 'Scoring'], ['automation', 'Automatisations'], ['offers', 'Offres & prompts'], ['suppression', `Opposition (${suppression.length})`], ['secrets', 'Clés API'], ['infra', 'Infrastructure']].map(([k, l]) => <TabsTrigger key={k} value={k!}>{l}</TabsTrigger>)}
+        {[['general','L’essentiel'],['ai','Mon IA'],['outreach','Mes emails'],['payment','Paiement'],...(advanced?[['search','Recherche'],['sites','Sites'],['scoring','Scoring'],['automation','Automatisations'],['offers','Offres & prompts'],['suppression','Opposition'],['secrets','Clés API'],['infra','Infrastructure']]:[])].map(([k,l])=><TabsTrigger key={k} value={k!}>{l}</TabsTrigger>)}
+        <button className="px-3 py-2 text-xs text-muted" onClick={()=>setAdvanced(!advanced)}>Options avancées {advanced?'−':'+'}</button>
       </TabsList>
 
+      <TabsContent value="general"><div className="grid gap-4 md:grid-cols-3">{[['ai','1. Mon IA',infra.ai.available?'Connectée':'À connecter','Pour créer vos sites sur mesure.'],['outreach','2. Mes emails',s.outreach.senderEmail||'Expéditeur à renseigner','Pour préparer vos propositions.'],['payment','3. Mon paiement',s.commerce.enabled?'Activé — vérifier la connexion Stripe':'À configurer','Un prix unique, un paiement et une facture.']].map(([value,title,status,description])=><Card key={value}><CardHeader title={title!} description={description}/><CardBody><p className="mb-4 text-sm">{status}</p><Button variant="outline" onClick={()=>setTab(value!)}>Configurer</Button></CardBody></Card>)}</div></TabsContent>
+      <TabsContent value="payment"><BillingSettings onSaved={data=>{patch('commerce',data.commerce);patch('sites',{previewBaseUrl:data.base})}}/></TabsContent>
       <TabsContent value="ai" className="space-y-4">
         <Card><CardBody className="grid gap-4 md:grid-cols-3">
           <Field label="Fournisseur" hint="Abonnement = vos crédits Claude Pro/Max ou ChatGPT, via le CLI officiel connecté sur la machine du worker. Aucune clé API."><Select value={s.ai.provider} onChange={(e) => patch('ai', { provider: e.target.value as Settings['ai']['provider'] })}>
-            <option value="none">Aucun (génération déterministe)</option>
+            <option value="none">Aucun</option>
             <optgroup label="Abonnement (sans clé API)"><option value="claude-code">Claude — abonnement Pro/Max (CLI claude)</option><option value="codex">ChatGPT — abonnement (CLI codex)</option></optgroup>
             <optgroup label="Clé API (facturation à l’usage)"><option value="anthropic">Anthropic API</option><option value="openai">OpenAI API</option><option value="openrouter">OpenRouter</option></optgroup>
           </Select></Field>

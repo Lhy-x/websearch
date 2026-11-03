@@ -1,6 +1,8 @@
 import { z } from 'zod'
 
 const schema = z.object({
+  STRIPE_SECRET_KEY:z.string().default(''),
+  STRIPE_WEBHOOK_SECRET:z.string().default(''),
   DATABASE_URL: z.string().min(1).default('postgres://pf:pf@localhost:5432/prospectforge'),
   APP_BASE_URL: z.string().url().default('http://localhost:3000'),
   ADMIN_EMAIL: z.string().default(''),

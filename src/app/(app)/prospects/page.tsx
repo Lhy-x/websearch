@@ -29,12 +29,13 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
         description={`${fmtInt(total)} prospect(s)`}
         actions={
           <>
+            <Button asChild><Link href="/search">Trouver des prospects</Link></Button>
             <ImportButton />
             <Button variant="outline" asChild><a href={`/api/prospects/export?${qs}`}><Download />Exporter CSV</a></Button>
           </>
         }
       />
-      <Suspense><ProspectFilters /></Suspense>
+      <details><summary className="cursor-pointer py-3 text-sm text-muted">Rechercher et filtrer la liste</summary><Suspense><ProspectFilters /></Suspense></details>
       <Card className="mt-4">
         {rows.length ? (
           <>

@@ -22,6 +22,7 @@ export const scoringWeightsSchema = z.object({
 })
 
 export const settingsSchema = z.object({
+  commerce: z.object({taxRateId:z.string().regex(/^$|^txr_[A-Za-z0-9]+$/).default(''),enabled:z.boolean().default(false),priceCents:z.number().int().min(50).max(10000000).nullable().default(null),currency:z.enum(['eur','chf','usd']).default('eur'),title:z.string().trim().min(1).max(120).default('Création de votre site internet')}).prefault({}),
   ai: z
     .object({
       provider: z.enum(['none', 'claude-code', 'codex', 'anthropic', 'openai', 'openrouter']).default('none'),
@@ -100,6 +101,8 @@ export const SECRET_KEYS = [
   'OPENROUTER_API_KEY',
   'GOOGLE_PLACES_API_KEY',
   'INSEE_SIRENE_API_KEY',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
   'RESEND_API_KEY',
   'RESEND_WEBHOOK_SECRET',
   'SMTP_PASSWORD',

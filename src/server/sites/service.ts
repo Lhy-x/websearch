@@ -93,7 +93,7 @@ export async function getWebsiteVersion(websiteId: string, version?: number): Pr
   const db = sql()
   const [row] = version
     ? await db<{ version: number; config: unknown }[]>`select version, config from website_versions where website_id = ${websiteId} and version = ${version}`
-    : await db<{ version: number; config: unknown }[]>`select v.version, v.config from website_versions v join generated_websites w on w.id = v.website_id and v.version = w.current_version where w.id = ${websiteId}`
+    : await db<{ version: number; config: unknown }[]>`select v.version, v.config from website_versions v join generated_websites w on w.id = v.website_id and v.version = w.current_version where w.id = ${websiteId} and w.deleted_at is null`
   if (!row) return null
   return { version: row.version, config: websiteVersionSchema.parse(row.config) }
 }
@@ -105,7 +105,7 @@ export async function saveWebsiteVersion(websiteId: string, input: unknown, opts
   if (isHtmlSite(config)) config = { ...config, html: sanitizeSiteHtml(config.html, config.media.map((m) => m.url)).html }
   const db = sql()
   return db.begin(async (tx) => {
-    const [w] = await tx<{ current_version: number | null; business_id: string }[]>`select current_version, business_id from generated_websites where id = ${websiteId} for update`
+    const [w] = await tx<{ current_version: number | null; business_id: string }[]>`select current_version, business_id from generated_websites where id = ${websiteId} and deleted_at is null for update`
     if (!w) throw new AppError('Site introuvable', 404, 'NOT_FOUND')
     if (opts.baseVersion !== undefined && w.current_version !== opts.baseVersion)
       throw new AppError(`Conflit : la version ${w.current_version} a été enregistrée entre-temps.`, 409, 'CONFLICT')
@@ -133,7 +133,7 @@ export interface PreviewLookup {
 export async function lookupPreview(token: string): Promise<PreviewLookup> {
   if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return { status: 'not_found' } as PreviewLookup
   const [w] = await sql()<{ id: string; business_id: string; preview_enabled: boolean; preview_expires_at: Date | null; status: string }[]>`
-    select id, business_id, preview_enabled, preview_expires_at, status from generated_websites where preview_token = ${token}`
+    select id, business_id, preview_enabled, preview_expires_at, status from generated_websites where preview_token = ${token} and deleted_at is null`
   if (!w || w.status === 'ERROR' || w.status === 'GENERATING') return { status: 'not_found' } as PreviewLookup
   if (!w.preview_enabled || w.status === 'DISABLED') return { status: 'disabled' } as PreviewLookup
   if (w.preview_expires_at && w.preview_expires_at < new Date()) return { status: 'expired' } as PreviewLookup

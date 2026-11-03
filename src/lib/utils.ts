@@ -12,7 +12,7 @@ export const fmtEur = (cents: number | null | undefined) => (cents == null ? '�
 export function fmtDate(d: string | Date | null | undefined, withTime = true): string {
   if (!d) return '—'
   const date = typeof d === 'string' ? new Date(d) : d
-  return new Intl.DateTimeFormat('fr-FR', withTime ? { dateStyle: 'short', timeStyle: 'short' } : { dateStyle: 'medium' }).format(date)
+  return new Intl.DateTimeFormat('fr-FR', withTime ? { dateStyle: 'short', timeStyle: 'short', timeZone:'Europe/Paris' } : { dateStyle: 'medium', timeZone:'Europe/Paris' }).format(date)
 }
 export function fmtRelative(d: string | Date | null | undefined): string {
   if (!d) return '—'

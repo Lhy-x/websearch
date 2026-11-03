@@ -3,7 +3,7 @@ import {BillingSettings} from '@/components/billing-settings'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { CheckCircle2, XCircle, Trash2 } from 'lucide-react'
+import { ArrowRight, CheckCircle2, CreditCard, Mail, Settings2, Sparkles, XCircle, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge, Card, CardBody, CardHeader, Field, Input, Notice, Select, Table, Td, Textarea, Th } from '@/components/ui/primitives'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -26,11 +26,11 @@ interface Infra {
 
 const mb = (b: number) => `${(b / 1024 / 1024).toFixed(1)} Mo`
 
-export function SettingsClient({ settings, secrets, infra, offers, strategies, suppression }: { settings: Settings; secrets: Secrets; infra: Infra; offers: { id: string; name: string; kind: string; description: string; price_cents: number | null; active: boolean }[]; strategies: { id: string; name: string; instructions: string; tone: string; is_default: boolean }[]; suppression: { id: string; email: string | null; domain: string | null; reason: string; source: string | null; created_at: string }[] }) {
+export function SettingsClient({ settings, secrets, infra, offers, strategies, suppression, initialTab='general' }: { initialTab?:string; settings: Settings; secrets: Secrets; infra: Infra; offers: { id: string; name: string; kind: string; description: string; price_cents: number | null; active: boolean }[]; strategies: { id: string; name: string; instructions: string; tone: string; is_default: boolean }[]; suppression: { id: string; email: string | null; domain: string | null; reason: string; source: string | null; created_at: string }[] }) {
   const router = useRouter()
   const [s, setS] = useState<Settings>(settings)
-  const [tab,setTab]=useState('general')
-  const [advanced,setAdvanced]=useState(false)
+  const [tab,setTab]=useState(initialTab)
+  const [advanced,setAdvanced]=useState(!['general','ai','outreach','payment'].includes(initialTab))
   const [busy, setBusy] = useState(false)
   const patch = <K extends keyof Settings>(k: K, v: Partial<Settings[K]>) => setS((x) => ({ ...x, [k]: { ...(x[k] as object), ...v } }))
   const save = async () => {
@@ -61,10 +61,10 @@ export function SettingsClient({ settings, secrets, infra, offers, strategies, s
     <Tabs value={tab} onValueChange={setTab}>
       <TabsList className="flex-wrap">
         {[['general','L’essentiel'],['ai','Mon IA'],['outreach','Mes emails'],['payment','Paiement'],...(advanced?[['search','Recherche'],['sites','Sites'],['scoring','Scoring'],['automation','Automatisations'],['offers','Offres & prompts'],['suppression','Opposition'],['secrets','Clés API'],['infra','Infrastructure']]:[])].map(([k,l])=><TabsTrigger key={k} value={k!}>{l}</TabsTrigger>)}
-        <button className="px-3 py-2 text-xs text-muted" onClick={()=>setAdvanced(!advanced)}>Options avancées {advanced?'−':'+'}</button>
+        <button className="px-3 py-2 text-xs text-muted" onClick={()=>{if(advanced&&!['general','ai','outreach','payment'].includes(tab))setTab('general');setAdvanced(!advanced)}}>Options avancées {advanced?'−':'+'}</button>
       </TabsList>
 
-      <TabsContent value="general"><div className="grid gap-4 md:grid-cols-3">{[['ai','1. Mon IA',infra.ai.available?'Connectée':'À connecter','Pour créer vos sites sur mesure.'],['outreach','2. Mes emails',s.outreach.senderEmail||'Expéditeur à renseigner','Pour préparer vos propositions.'],['payment','3. Mon paiement',s.commerce.enabled?'Activé — vérifier la connexion Stripe':'À configurer','Un prix unique, un paiement et une facture.']].map(([value,title,status,description])=><Card key={value}><CardHeader title={title!} description={description}/><CardBody><p className="mb-4 text-sm">{status}</p><Button variant="outline" onClick={()=>setTab(value!)}>Configurer</Button></CardBody></Card>)}</div></TabsContent>
+      <TabsContent value="general"><div className="settings-intro"><div><p className="eyebrow mb-3">À VOTRE IMAGE</p><h2>Trois réglages pour bien démarrer.</h2><p>Connectez votre IA, préparez votre signature et ajoutez le paiement quand vous souhaitez vendre. Vous pourrez revenir sur chaque choix.</p></div><span className="settings-icon"><Settings2 size={25}/></span></div><div className="grid gap-5 md:grid-cols-3">{[{value:'ai',title:'1. Mon intelligence artificielle',status:infra.ai.available?'Connectée':'À connecter',description:'Votre moteur de création pour des sites sur mesure.',icon:Sparkles},{value:'outreach',title:'2. Ma signature email',status:s.outreach.senderEmail||'À personnaliser',description:'Votre nom et vos coordonnées dans chaque proposition.',icon:Mail},{value:'payment',title:'3. Mon paiement Stripe',status:s.commerce.enabled?'Configuration à vérifier':'À configurer quand vous êtes prêt',description:'Un prix unique, le paiement et une facture pour le client.',icon:CreditCard}].map(item=><Card key={item.value}><CardBody><span className="mb-5 inline-flex rounded-2xl bg-primary/8 p-3 text-primary"><item.icon size={21}/></span><h3 className="text-sm font-semibold tracking-tight">{item.title}</h3><p className="mt-3 text-xs leading-7 text-muted">{item.description}</p><p className="my-5 truncate text-xs font-medium text-primary">{item.status}</p><Button variant="outline" onClick={()=>setTab(item.value)}>Configurer<ArrowRight/></Button></CardBody></Card>)}</div></TabsContent>
       <TabsContent value="payment"><BillingSettings onSaved={data=>{patch('commerce',data.commerce);patch('sites',{previewBaseUrl:data.base})}}/></TabsContent>
       <TabsContent value="ai" className="space-y-4">
         <Card><CardBody className="grid gap-4 md:grid-cols-3">
@@ -73,15 +73,17 @@ export function SettingsClient({ settings, secrets, infra, offers, strategies, s
             <optgroup label="Abonnement (sans clé API)"><option value="claude-code">Claude — abonnement Pro/Max (CLI claude)</option><option value="codex">ChatGPT — abonnement (CLI codex)</option></optgroup>
             <optgroup label="Clé API (facturation à l’usage)"><option value="anthropic">Anthropic API</option><option value="openai">OpenAI API</option><option value="openrouter">OpenRouter</option></optgroup>
           </Select></Field>
-          <Field label="Mode de coût" hint="LOW_COST : aucun appel IA pour les sites et emails. BALANCED : modèle fort pour la génération, économique pour la classification. HIGH_QUALITY : modèle fort partout."><Select value={s.ai.costMode} onChange={(e) => patch('ai', { costMode: e.target.value as Settings['ai']['costMode'] })}><option>LOW_COST</option><option>BALANCED</option><option>HIGH_QUALITY</option></Select></Field>
+          <Field label="Mode de coût" hint="LOW_COST : aucun appel IA pour les sites et emails. BALANCED : modèle fort pour la génération, économique pour la classification. HIGH_QUALITY : modèle fort partout."><Select value={s.ai.costMode} onChange={(e) => patch('ai', { costMode: e.target.value as Settings['ai']['costMode'] })}><option value="LOW_COST">Économique — génération IA désactivée</option><option value="BALANCED">Équilibré — recommandé</option><option value="HIGH_QUALITY">Qualité maximale</option></Select></Field>
           {s.ai.provider === 'claude-code' || s.ai.provider === 'codex' ? (
             <Field label="Appels IA max / jour (abonnement)" hint="Protège les limites de votre abonnement. Un site sur mesure = 1 à 3 appels."><Input type="number" min={1} max={2000} value={s.ai.subscriptionDailyCalls} onChange={(e) => patch('ai', { subscriptionDailyCalls: Number(e.target.value) })} /></Field>
           ) : (
             <Field label="Budget IA journalier ($)" hint="Les appels sont refusés au-delà (vérification avant chaque appel)."><Input type="number" min={0} step={0.5} value={s.ai.dailyBudgetUsd} onChange={(e) => patch('ai', { dailyBudgetUsd: Number(e.target.value) })} /></Field>
           )}
+          <details className="ui-details md:col-span-3"><summary>Modèles et réglages avancés</summary><div className="grid gap-4 md:grid-cols-3">
           <Field label="Modèle économique" hint={{ anthropic: 'Défaut : claude-haiku-5-5', 'claude-code': 'Défaut : haiku (alias du CLI)', codex: 'Vide = modèle par défaut de Codex' }[s.ai.provider as string] ?? 'Requis pour OpenAI / OpenRouter'}><Input value={s.ai.cheapModel} onChange={(e) => patch('ai', { cheapModel: e.target.value })} placeholder={{ anthropic: 'claude-haiku-5-5', 'claude-code': 'haiku' }[s.ai.provider as string] ?? ''} /></Field>
           <Field label="Modèle performant (sites sur mesure)" hint={{ anthropic: 'Défaut : claude-opus-5-5', 'claude-code': 'Défaut : opus (le meilleur modèle de votre forfait)', codex: 'Vide = modèle par défaut de Codex' }[s.ai.provider as string] ?? 'Requis pour OpenAI / OpenRouter'}><Input value={s.ai.strongModel} onChange={(e) => patch('ai', { strongModel: e.target.value })} placeholder={{ anthropic: 'claude-opus-5-5', 'claude-code': 'opus' }[s.ai.provider as string] ?? ''} /></Field>
           <Field label="Température" hint="OpenAI / OpenRouter uniquement (non utilisée par l’API Anthropic récente)"><Input type="number" min={0} max={1.5} step={0.1} value={s.ai.temperature} onChange={(e) => patch('ai', { temperature: Number(e.target.value) })} /></Field>
+          </div></details>
           <Field label="Consignes personnalisées pour la génération de sites" className="md:col-span-3"><Textarea rows={3} maxLength={4000} value={s.ai.customSiteInstructions} onChange={(e) => patch('ai', { customSiteInstructions: e.target.value })} /></Field>
         </CardBody></Card>
         <Notice tone={infra.ai.available ? 'success' : 'warning'} title={infra.ai.available ? `IA opérationnelle (${infra.ai.provider})` : 'IA non configurée'}>{infra.ai.available ? (s.ai.provider === 'claude-code' || s.ai.provider === 'codex' ? 'Connecté via votre abonnement. Le plafond d’appels journalier s’applique.' : 'La clé est présente. Le budget journalier s’applique.') : infra.ai.reason}</Notice>
@@ -118,12 +120,12 @@ export function SettingsClient({ settings, secrets, infra, offers, strategies, s
           <Field label="Signature" className="md:col-span-3"><Textarea rows={3} value={s.outreach.signature} onChange={(e) => patch('outreach', { signature: e.target.value })} /></Field>
           <Field label="Mention légale (raison sociale, SIRET)" hint="Ajoutée en pied de chaque email"><Input value={s.outreach.companyLegalLine} onChange={(e) => patch('outreach', { companyLegalLine: e.target.value })} /></Field>
           <Field label="Adresse postale"><Input value={s.outreach.physicalAddress} onChange={(e) => patch('outreach', { physicalAddress: e.target.value })} /></Field>
-          <Field label="Plafond quotidien par défaut"><Input type="number" min={1} max={2000} value={s.outreach.defaultDailyLimit} onChange={(e) => patch('outreach', { defaultDailyLimit: Number(e.target.value) })} /></Field>
-          <Field label="Relances par défaut (jours après l’envoi initial)"><Input value={s.outreach.followupDelaysDays.join(', ')} onChange={(e) => patch('outreach', { followupDelaysDays: e.target.value.split(',').map((x) => Number(x.trim())).filter((n) => n > 0) })} /></Field>
+          <details className="ui-details md:col-span-3"><summary>Options des campagnes automatiques</summary><div className="grid gap-4 md:grid-cols-2"><Field label="Plafond quotidien par défaut"><Input type="number" min={1} max={2000} value={s.outreach.defaultDailyLimit} onChange={(e) => patch('outreach', { defaultDailyLimit: Number(e.target.value) })} /></Field>
+          <Field label="Relances par défaut (jours après l’envoi initial)"><Input value={s.outreach.followupDelaysDays.join(', ')} onChange={(e) => patch('outreach', { followupDelaysDays: e.target.value.split(',').map((x) => Number(x.trim())).filter((n) => n > 0) })} /></Field></div></details>
         </CardBody></Card>
         <SaveBar />
-        <TestEmail onSend={(j) => post({ action: 'test_email', ...j })} />
-        <DnsCheck onCheck={(d) => post({ action: 'dns_check', domain: d })} defaultDomain={s.outreach.senderEmail.split('@')[1] ?? ''} />
+        <details className="ui-details"><summary>Tester les envois et vérifier le domaine</summary><div className="space-y-5"><TestEmail onSend={(j) => post({ action: 'test_email', ...j })} />
+        <DnsCheck onCheck={(d) => post({ action: 'dns_check', domain: d })} defaultDomain={s.outreach.senderEmail.split('@')[1] ?? ''} /></div></details>
       </TabsContent>
 
       <TabsContent value="sites" className="space-y-4">

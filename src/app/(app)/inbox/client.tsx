@@ -10,7 +10,8 @@ import { Dialog } from '@/components/ui/dialog'
 import { Badge, Card, EmptyState, Field, Input, Notice, Select, Skeleton, Textarea } from '@/components/ui/primitives'
 import { PipelineBadge } from '@/components/badges'
 import { CLASSIFICATION, MSG_STATUS } from '@/lib/labels'
-import { api, cn, fmtDate, fmtRelative } from '@/lib/utils'
+import { RelativeTime } from '@/components/relative-time'
+import { api, cn, fmtDate } from '@/lib/utils'
 
 interface Conv { id: string; status: string; unread: boolean; last_classification: string | null; last_message_at: string; subject: string | null; business_id: string | null; business_name: string | null; campaign_name: string | null; last_body: string | null; last_summary: string | null }
 interface Detail {
@@ -50,7 +51,7 @@ export function InboxClient() {
                 <button onClick={() => router.push(`${path}?c=${c.id}`)} className={cn('w-full px-3 py-2.5 text-left hover:bg-panel-2', current === c.id && 'bg-panel-2')}>
                   <div className="flex items-center justify-between gap-2">
                     <span className={cn('truncate text-sm', c.unread && 'font-semibold')}>{c.business_name ?? 'Expéditeur inconnu'}</span>
-                    <span className="shrink-0 text-[11px] text-muted">{fmtRelative(c.last_message_at)}</span>
+                    <span className="shrink-0 text-[11px] text-muted"><RelativeTime date={c.last_message_at}/></span>
                   </div>
                   <div className="mt-0.5 flex items-center gap-1.5">
                     {c.last_classification ? <Badge tone={CLASSIFICATION[c.last_classification]?.tone}>{CLASSIFICATION[c.last_classification]?.label}</Badge> : null}

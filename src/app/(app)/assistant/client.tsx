@@ -106,8 +106,8 @@ export function AssistantClient() {
         </div>
       ))}
       <div ref={end} />
-      <form className="sticky bottom-4 flex gap-2 rounded-xl border border-border bg-panel p-2 shadow-lg" onSubmit={(e) => { e.preventDefault(); void ask(text) }}>
-        <input value={text} onChange={(e) => setText(e.target.value)} aria-label="Votre demande" placeholder={sel.ids.size ? `Demande (${sel.ids.size} prospect(s) sélectionné(s) = « ces prospects »)` : 'Ex. : recherche les plombiers à Lyon sans site'} className="h-10 flex-1 rounded-lg bg-transparent px-3 text-sm outline-none" />
+      <form className="sticky bottom-4 flex gap-2 rounded-2xl border border-border bg-panel p-2 shadow-lg" onSubmit={(e) => { e.preventDefault(); void ask(text) }}>
+        <input value={text} onChange={(e) => setText(e.target.value)} aria-label="Votre demande" placeholder={sel.ids.size ? `Demande (${sel.ids.size} prospect(s) sélectionné(s) = « ces prospects »)` : 'Ex. : recherche les plombiers à Lyon sans site'} className="h-10 min-w-0 flex-1 rounded-xl bg-transparent px-3 text-sm outline-none" />
         <Button type="submit" disabled={!text.trim()}><Send />Envoyer</Button>
       </form>
     </div>

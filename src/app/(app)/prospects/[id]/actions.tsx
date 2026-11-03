@@ -33,8 +33,8 @@ export function ProspectActions({ id, status, sites }: { id: string; status: str
       <Select className="w-44" value={status} onChange={(e) => simple({ action: 'set_status', status: e.target.value }, 'Statut mis à jour')} aria-label="Statut du pipeline">
         {PIPELINE.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
       </Select>
-      <Button onClick={() => runJob('Génération du site', () => post(id, { action: 'generate_site', generator: 'personalized' }))}><Sparkles />Créer le site sur mesure</Button>
-      <Button variant="outline" onClick={() => runJob('Proposition commerciale', () => post(id, { action: 'proposal', websiteId: sites[0] ?? null }))}>Créer une proposition</Button>
+      <Button asChild><Link href={`/generator?business=${id}`}><Sparkles/>Créer le site sur mesure</Link></Button>
+      {sites.length?<Button variant="outline" asChild><Link href={`/sites/${sites[0]}`}>Ouvrir la démo</Link></Button>:null}
       <DM.Root>
         <DM.Trigger asChild><Button variant="outline">Actions<ChevronDown /></Button></DM.Trigger>
         <DM.Portal>

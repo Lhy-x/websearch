@@ -127,9 +127,9 @@ export function JobFilters({ types }: { types: [string, string][] }) {
     router.push(`${path}?${q}`)
   }
   return (
-    <div className="flex gap-2">
-      <Select className="h-8 w-40 text-xs" value={sp.get('status') ?? ''} onChange={(e) => set('status', e.target.value)} aria-label="Statut"><option value="">Tous statuts</option>{['PENDING', 'RUNNING', 'RETRYING', 'COMPLETED', 'FAILED', 'CANCELLED'].map((s) => <option key={s}>{s}</option>)}</Select>
-      <Select className="h-8 w-48 text-xs" value={sp.get('type') ?? ''} onChange={(e) => set('type', e.target.value)} aria-label="Type"><option value="">Tous types</option>{types.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
+    <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+      <Select className="w-full text-xs sm:w-40" value={sp.get('status') ?? ''} onChange={(e) => set('status', e.target.value)} aria-label="Statut"><option value="">Tous statuts</option>{['PENDING', 'RUNNING', 'RETRYING', 'COMPLETED', 'FAILED', 'CANCELLED'].map((s) => <option key={s}>{s}</option>)}</Select>
+      <Select className="w-full text-xs sm:w-48" value={sp.get('type') ?? ''} onChange={(e) => set('type', e.target.value)} aria-label="Type"><option value="">Tous types</option>{types.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
     </div>
   )
 }

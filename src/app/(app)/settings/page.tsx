@@ -7,7 +7,9 @@ import { SettingsClient } from './client'
 export const metadata = { title: 'Paramètres' }
 export const dynamic = 'force-dynamic'
 
-export default async function SettingsPage() {
+export default async function SettingsPage({searchParams}:{searchParams:Promise<{tab?:string}>}) {
+  const {tab:requestedTab}=await searchParams
+  const tab=['general','ai','outreach','payment','search','sites','scoring','automation','offers','suppression','secrets','infra'].includes(requestedTab??'')?requestedTab!:'general'
   const db = sql()
   const [settings, secrets, infra, offers, strategies, suppression] = await Promise.all([
     getSettings(),
@@ -19,8 +21,10 @@ export default async function SettingsPage() {
   ])
   return (
     <>
-      <PageHeader title="Paramètres" description="Réglages enregistrés en base et utilisés par l’application et les workers. Les secrets saisis ici sont chiffrés (AES-256-GCM) ; une variable d’environnement est toujours prioritaire." />
+      <PageHeader title="Paramètres" description="Personnalisez votre espace une fois. Concentrez-vous ensuite sur vos projets." />
       <SettingsClient
+        key={tab}
+        initialTab={tab}
         settings={settings}
         secrets={secrets}
         infra={JSON.parse(JSON.stringify(infra))}

@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test'
 
 const PAGES: [string, RegExp][] = [
-  ['/', /Dashboard/], ['/?period=7d', /Dashboard/], ['/search', /Recherche de prospects/], ['/prospects', /Base de prospects/],
-  ['/qualification', /Qualification/], ['/generator', /Générateur de sites/], ['/sites', /Sites générés/], ['/campaigns', /Campagnes/],
+  ['/', /Faisons avancer vos projets/], ['/?period=7d', /Faisons avancer vos projets/], ['/search', /Recherche de prospects/], ['/prospects', /Mes prospects/],
+  ['/qualification', /Qualification/], ['/generator', /Générateur de sites/], ['/sites', /Mes démos/], ['/campaigns', /Campagnes/],
   ['/campaigns/new', /Nouvelle campagne/], ['/inbox', /Boîte de réception/], ['/crm', /CRM/], ['/automations', /Automatisations/],
-  ['/analytics', /Analytics/], ['/analytics?period=custom&from=2026-01-01&to=2026-12-31', /Analytics/], ['/settings', /Paramètres/], ['/assistant', /Assistant/],
+  ['/analytics', /Analytics/], ['/analytics?period=custom&from=2026-01-01&to=2026-12-31', /Analytics/], ['/settings', /Paramètres/], ['/settings?tab=ai',/Paramètres/], ['/settings?tab=payment',/Paramètres/], ['/sales',/Mes ventes/], ['/guide',/Un premier site/], ['/sites?trash=1',/Corbeille/], ['/assistant', /Assistant/],
 ]
 
 test('every page renders without server or console errors (light and dark)', async ({ page }) => {
@@ -26,6 +26,8 @@ test('every page renders without server or console errors (light and dark)', asy
   if (jobs[0]?.id) extra.push([`/search?run=${jobs[0].id}`, /Recherche de prospects/])
   for (const theme of ['light', 'dark']) {
     await page.emulateMedia({ colorScheme: theme as 'light' | 'dark' })
+    const dark = (await page.locator('html').getAttribute('class'))?.includes('dark') ?? false
+    if (dark !== (theme === 'dark')) await page.getByRole('button',{name:'Changer de thème'}).click()
     for (const [url, heading] of [...PAGES, ...extra]) {
       const res = await page.goto(url)
       expect(res?.status(), url).toBe(200)

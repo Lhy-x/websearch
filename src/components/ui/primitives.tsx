@@ -1,18 +1,19 @@
 import { forwardRef } from 'react'
+import { FolderOpen, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(({ className, ...p }, ref) => (
-  <input ref={ref} className={cn('h-9 w-full rounded-lg border border-border bg-panel px-3 text-sm placeholder:text-muted disabled:opacity-60', className)} {...p} />
+  <input ref={ref} className={cn('ui-control h-11 w-full min-w-0 rounded-xl border border-border bg-panel px-3.5 text-sm placeholder:text-muted/80 disabled:bg-panel-2 disabled:opacity-60', className)} {...p} />
 ))
 Input.displayName = 'Input'
 
 export const Textarea = forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(({ className, ...p }, ref) => (
-  <textarea ref={ref} className={cn('w-full rounded-lg border border-border bg-panel px-3 py-2 text-sm placeholder:text-muted', className)} {...p} />
+  <textarea ref={ref} className={cn('ui-control w-full min-w-0 rounded-xl border border-border bg-panel px-3.5 py-3 text-sm leading-relaxed placeholder:text-muted/80', className)} {...p} />
 ))
 Textarea.displayName = 'Textarea'
 
 export const Select = forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(({ className, children, ...p }, ref) => (
-  <select ref={ref} className={cn('h-9 w-full rounded-lg border border-border bg-panel px-2.5 text-sm', className)} {...p}>
+  <select ref={ref} className={cn('ui-control h-11 w-full min-w-0 rounded-xl border border-border bg-panel px-3 text-sm disabled:opacity-60', className)} {...p}>
     {children}
   </select>
 ))
@@ -44,21 +45,21 @@ export function Field({ label, hint, children, className, group }: { label: stri
 }
 
 export function Card({ className, ...p }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('app-card rounded-2xl border border-border bg-panel', className)} {...p} />
+  return <div className={cn('app-card min-w-0 rounded-3xl border border-border bg-panel', className)} {...p} />
 }
 export function CardHeader({ title, description, actions, className }: { title: React.ReactNode; description?: React.ReactNode; actions?: React.ReactNode; className?: string }) {
   return (
-    <div className={cn('flex items-start justify-between gap-4 border-b border-border px-5 py-4', className)}>
+    <div className={cn('flex flex-wrap items-start justify-between gap-4 px-6 pb-2 pt-6', className)}>
       <div>
-        <h3 className="text-sm font-semibold">{title}</h3>
-        {description ? <p className="mt-0.5 text-xs text-muted">{description}</p> : null}
+        <h3 className="text-[15px] font-semibold tracking-tight">{title}</h3>
+        {description ? <p className="mt-1.5 max-w-2xl text-xs leading-relaxed text-muted">{description}</p> : null}
       </div>
       {actions}
     </div>
   )
 }
 export function CardBody({ className, ...p }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('p-5', className)} {...p} />
+  return <div className={cn('p-6', className)} {...p} />
 }
 
 const TONES = {
@@ -71,7 +72,7 @@ const TONES = {
 } as const
 export type Tone = keyof typeof TONES
 export function Badge({ tone = 'neutral', className, ...p }: React.HTMLAttributes<HTMLSpanElement> & { tone?: Tone }) {
-  return <span className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-1.5 py-0.5 text-[11px] font-medium', TONES[tone], className)} {...p} />
+  return <span className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-1 text-[10px] font-medium leading-none', TONES[tone], className)} {...p} />
 }
 
 export function Skeleton({ className }: { className?: string }) {
@@ -80,10 +81,10 @@ export function Skeleton({ className }: { className?: string }) {
 
 export function EmptyState({ icon, title, description, action }: { icon?: React.ReactNode; title: string; description?: string; action?: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
-      {icon ? <div className="mb-1 rounded-xl bg-panel-2 p-3 text-muted [&_svg]:size-5">{icon}</div> : null}
-      <p className="text-sm font-medium">{title}</p>
-      {description ? <p className="max-w-md text-xs text-muted">{description}</p> : null}
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+      <div className="mb-2 grid size-14 place-items-center rounded-2xl border border-border bg-panel-2 text-primary [&_svg]:size-6">{icon ?? <FolderOpen/>}</div>
+      <p className="text-base font-medium tracking-tight">{title}</p>
+      {description ? <p className="max-w-sm text-xs leading-7 text-muted">{description}</p> : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </div>
   )
@@ -91,10 +92,10 @@ export function EmptyState({ icon, title, description, action }: { icon?: React.
 
 export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: React.ReactNode }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div className="mb-7 flex flex-wrap items-end justify-between gap-5">
       <div>
-        <h1 className="text-3xl font-semibold tracking-[-.04em]">{title}</h1>
-        {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
+        <h1 className="text-[28px] font-medium leading-tight tracking-[-.045em] sm:text-[34px]">{title}</h1>
+        {description ? <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-muted">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
@@ -103,23 +104,23 @@ export function PageHeader({ title, description, actions }: { title: string; des
 
 export function Table({ className, ...p }: React.TableHTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="overflow-x-auto">
-      <table className={cn('w-full text-sm', className)} {...p} />
+    <div className="max-w-full overflow-x-auto">
+      <table className={cn('ui-table w-full text-sm', className)} {...p} />
     </div>
   )
 }
 export function Th({ className, ...p }: React.ThHTMLAttributes<HTMLTableCellElement>) {
-  return <th className={cn('whitespace-nowrap border-b border-border px-3 py-2 text-left text-xs font-medium text-muted', className)} {...p} />
+  return <th scope="col" className={cn('whitespace-nowrap border-b border-border px-4 py-4 text-left text-[11px] font-medium text-muted', className)} {...p} />
 }
 export function Td({ className, ...p }: React.TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn('border-b border-border/60 px-3 py-2.5 align-middle', className)} {...p} />
+  return <td className={cn('border-b border-border/70 px-4 py-4 align-middle', className)} {...p} />
 }
 
 export function Notice({ tone = 'info', title, children }: { tone?: Tone; title?: string; children: React.ReactNode }) {
   return (
-    <div className={cn('rounded-lg border px-3.5 py-2.5 text-xs', TONES[tone])}>
-      {title ? <p className="mb-0.5 font-semibold">{title}</p> : null}
-      <div className="text-fg/80">{children}</div>
+    <div className={cn('flex items-start gap-3 rounded-2xl border p-4 text-xs leading-relaxed', TONES[tone])}>
+      <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true"/>
+      <div className="min-w-0">{title ? <p className="mb-1 font-semibold">{title}</p> : null}<div className="text-fg/80">{children}</div></div>
     </div>
   )
 }

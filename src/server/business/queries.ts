@@ -88,7 +88,7 @@ export async function listBusinesses(f: ListFilters): Promise<{ rows: BusinessRo
     select b.id, b.name, b.sector, b.city, b.postcode, b.address, b.country, b.lat, b.lon, b.phone, b.email, b.email_status, b.website_url,
       b.web_presence_status, b.pipeline_status, b.score, b.data_confidence, b.priority, b.tags, b.created_at,
       coalesce((select array_agg(distinct s.source) from business_sources s where s.business_id = b.id), '{}') sources,
-      (select count(*)::int from generated_websites g where g.business_id = b.id and g.status = 'READY') sites
+      (select count(*)::int from generated_websites g where g.business_id = b.id and g.deleted_at is null and g.status = 'READY') sites
     from businesses b where ${w}
     order by ${order} ${dir}, b.id
     limit ${f.pageSize} offset ${(f.page - 1) * f.pageSize}`

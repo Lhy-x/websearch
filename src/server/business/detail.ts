@@ -12,7 +12,7 @@ export async function getBusinessDetail(id: string) {
     db`select score, confidence, priority, reasons, created_at from prospect_scores where business_id = ${id} order by created_at desc limit 10`,
     db`select g.id, g.template_id, g.style, g.status, g.current_version, g.preview_token, g.preview_enabled, g.preview_expires_at, g.generator, g.model, g.cost_usd, g.view_count, g.error, g.created_at,
          (select path from website_assets a where a.website_id = g.id and a.kind = 'thumbnail' order by created_at desc limit 1) thumbnail
-       from generated_websites g where business_id = ${id} order by created_at desc`,
+       from generated_websites g where business_id = ${id} and g.deleted_at is null order by created_at desc`,
     db`select id, website_id, content, generator, model, cost_usd, created_at from proposals where business_id = ${id} order by created_at desc limit 5`,
     db`select o.id, o.campaign_id, c.name campaign_name, o.step, o.to_email, o.subject, o.body_text, o.status, o.scheduled_at, o.sent_at, o.delivered_at, o.last_error, o.provider_message_id
        from outbound_messages o left join campaigns c on c.id = o.campaign_id where o.business_id = ${id} order by o.created_at desc limit 50`,

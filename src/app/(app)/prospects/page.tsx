@@ -1,15 +1,16 @@
 import Link from 'next/link'
-import { Download } from 'lucide-react'
+import { ArrowRight, Download, Search } from 'lucide-react'
 import { Suspense } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, EmptyState, PageHeader } from '@/components/ui/primitives'
+import { NextAction } from '@/components/workflow'
 import { ProspectTable } from '@/components/prospect-table'
 import { listBusinesses, listFiltersSchema } from '@/server/business/queries'
 import { fmtInt } from '@/lib/utils'
 import { ProspectFilters } from './filters'
 import { ImportButton } from './import-button'
 
-export const metadata = { title: 'Base de prospects' }
+export const metadata = { title: 'Mes prospects' }
 
 export default async function ProspectsPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const sp = await searchParams
@@ -25,17 +26,17 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
   return (
     <>
       <PageHeader
-        title="Base de prospects"
-        description={`${fmtInt(total)} prospect(s)`}
+        title="Mes prospects"
+        description={`${fmtInt(total)} entreprise${total>1?'s':''} dans votre liste. Choisissez votre prochaine opportunité.`}
         actions={
           <>
-            <Button asChild><Link href="/search">Trouver des prospects</Link></Button>
+            <Button asChild><Link href="/search"><Search/>Trouver des prospects</Link></Button>
             <ImportButton />
             <Button variant="outline" asChild><a href={`/api/prospects/export?${qs}`}><Download />Exporter CSV</a></Button>
           </>
         }
       />
-      <details><summary className="cursor-pointer py-3 text-sm text-muted">Rechercher et filtrer la liste</summary><Suspense><ProspectFilters /></Suspense></details>
+      <Suspense><ProspectFilters /></Suspense>
       <Card className="mt-4">
         {rows.length ? (
           <>
@@ -52,6 +53,7 @@ export default async function ProspectsPage({ searchParams }: { searchParams: Pr
           <EmptyState title="Aucun prospect" description="Lancez une recherche ou importez un fichier CSV / JSON / XLSX." action={<Button asChild><Link href="/search">Rechercher des prospects</Link></Button>} />
         )}
       </Card>
+      {rows.length ? <NextAction title="Choisissez une entreprise, créez son site." description="Ouvrez sa fiche pour vérifier ses informations, ou passez directement au générateur." href="/generator" action="Passer à la création"/> : null}
     </>
   )
 }

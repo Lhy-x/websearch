@@ -2,64 +2,44 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { ArrowUpRight, Check, CircleDot, Loader2, Search, Sparkles, WandSparkles } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Check, CircleCheck, Loader2, Plus, Search, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { api, fmtRelative } from '@/lib/utils'
+import { Badge, Card, CardBody, CardHeader, EmptyState, Input, Notice, PageHeader } from '@/components/ui/primitives'
+import { api } from '@/lib/utils'
+import { RelativeTime } from '@/components/relative-time'
 
 interface Candidate { id: string; name: string; city: string | null; sector: string | null; score: number | null; web_presence_status: string; sites: number }
 interface Job { id: string; status: string; error: string | null; created_at: string; result: { websiteId?: string } | null; name: string | null }
 interface Availability { available: boolean; provider: string; reason?: string }
+const ACTIVE = ['PENDING', 'RUNNING', 'RETRYING']
 
-export function GeneratorClient({candidates,preselect,jobs,availability}:{candidates:Candidate[];preselect:string|null;jobs:Job[];availability:Availability}) {
-  const router=useRouter()
-  const [q,setQ]=useState('')
-  const [busy,setBusy]=useState<string|null>(null)
-  const [selected,setSelected]=useState(preselect ?? candidates[0]?.id ?? null)
-  useEffect(()=>{if(jobs.some(j=>['PENDING','RUNNING','RETRYING'].includes(j.status))){const timer=setTimeout(()=>router.refresh(),3000);return()=>clearTimeout(timer)}},[jobs,router])
-  const prospect=candidates.find(c=>c.id===selected)
-  const visible=candidates.filter(c=>`${c.name} ${c.city??''}`.toLowerCase().includes(q.toLowerCase()))
-  async function generate(id:string) {
-    setBusy(id)
-    try {await api('/api/prospects/'+id,{method:'POST',json:{action:'generate_site',generator:'personalized'}});toast.success('Création lancée : votre site est en cours de conception.');router.refresh()}
-    catch(error){toast.error((error as Error).message)}finally{setBusy(null)}
+export function GeneratorClient({ candidates, preselect, jobs, availability }: { candidates: Candidate[]; preselect: string | null; jobs: Job[]; availability: Availability }) {
+  const router = useRouter()
+  const [q, setQ] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [selected, setSelected] = useState(preselect ?? candidates[0]?.id ?? null)
+  const [jobId, setJobId] = useState<string | null>(null)
+  const progress = useQuery({ queryKey: ['creation-progress', jobId], queryFn: () => api<{ job: { status: string; error: string | null; progress_message: string | null; result: { websiteId?: string } | null } }>(`/api/jobs/${jobId}`), enabled: !!jobId, refetchInterval: query => query.state.data && !ACTIVE.includes(query.state.data.job.status) ? false : 2000 })
+  const job = progress.data?.job
+  const creating = busy || !!jobId && (!job || ACTIVE.includes(job.status))
+  useEffect(() => { if (job?.status === 'COMPLETED' && job.result?.websiteId) { toast.success('Votre site est prêt à découvrir.'); router.push(`/sites/${job.result.websiteId}`) } }, [job, router])
+  useEffect(() => { if (jobs.some(j => ACTIVE.includes(j.status))) { const timer = setTimeout(() => router.refresh(), 4000); return () => clearTimeout(timer) } }, [jobs, router])
+  const prospect = candidates.find(c => c.id === selected)
+  const visible = candidates.filter(c => `${c.name} ${c.city ?? ''}`.toLowerCase().includes(q.toLowerCase()))
+  async function generate() {
+    if (!selected || creating) return
+    setBusy(true)
+    try { const response = await api<{ jobId: string }>('/api/prospects/' + selected, { method: 'POST', json: { action: 'generate_site', generator: 'personalized' } }); setJobId(response.jobId); router.refresh() }
+    catch (error) { toast.error((error as Error).message) } finally { setBusy(false) }
   }
-  return <div className="studio-page">
-    <div className="studio-kicker"><span className="studio-live-dot"/> ATELIER CRÉATIF <span className="ml-auto text-muted">PROSPECTFORGE / 01</span></div>
-    <section className="studio-hero">
-      <div className="studio-hero-copy">
-        <h1 className="text-sm font-medium text-muted">Générateur de sites</h1>
-        <h2>Un prospect.<br/><span>Une identité.</span></h2>
-        <p>Des sites qui ont quelque chose à dire. Une direction artistique, une sculpture de verre et un design conçus pour chaque entreprise.</p>
-        <div className="studio-tags"><span><Check/> Sans template</span><span><Check/> Skill 3D intégré</span><span><Check/> Éditable et exportable</span></div>
-      </div>
-      <div className="studio-art" aria-hidden="true"><div className="studio-art-grid"/><div className="studio-orbit orbit-one"/><div className="studio-orbit orbit-two"/><div className="studio-orbit orbit-three"/><span className="studio-art-label">MATIÈRE. LUMIÈRE. MOUVEMENT.</span><span className="studio-art-index">3D / SUR MESURE</span></div>
-    </section>
-    <div className="studio-workspace">
-      <section className="studio-prospects">
-        <div className="flex flex-wrap items-center justify-between gap-4"><div><span className="studio-step">01 / LE POINT DE DÉPART</span><h3 className="mt-2 text-xl font-semibold tracking-tight">Choisissez une entreprise</h3></div><span className="text-xs text-muted">{candidates.length} prospect{candidates.length>1?'s':''}</span></div>
-        <label className="studio-search"><Search className="size-4 text-muted"/><input aria-label="Rechercher une entreprise" placeholder="Un nom, une ville…" value={q} onChange={e=>setQ(e.target.value)}/></label>
-        <div className="studio-candidate-list">
-          {visible.map(c=><div key={c.id} className={`studio-candidate ${selected===c.id?'is-selected':''}`}>
-            <button className="min-w-0 flex-1 text-left" onClick={()=>setSelected(c.id)} aria-pressed={selected===c.id} aria-label={`Sélectionner ${c.name}`}><div className="flex items-center gap-3"><span className="studio-monogram">{c.name.slice(0,1).toUpperCase()}</span><div className="min-w-0"><span className="block truncate text-sm font-semibold">{c.name}</span><span className="mt-1 block text-xs text-muted">{c.city??'Ville non renseignée'} · {c.sites ? `${c.sites} site(s) créé(s)`:'Première création'}</span></div></div></button>
-            <button className="studio-create-icon" disabled={!availability.available||!!busy} onClick={()=>generate(c.id)} aria-label={`Créer le site de ${c.name}`}>{busy===c.id?<Loader2 className="size-4 animate-spin"/>:<ArrowUpRight className="size-5"/>}</button>
-          </div>)}
-          {!visible.length?<div className="py-12 text-center text-sm text-muted">Aucune entreprise ici pour le moment.<br/><Link href="/search" className="mt-3 inline-block text-primary">Rechercher des prospects <ArrowUpRight className="inline size-3"/></Link></div>:null}
-        </div>
-      </section>
-      <aside className="studio-brief">
-        <span className="studio-step">02 / LA CRÉATION</span>
-        <div className="studio-brief-icon"><WandSparkles className="size-6"/></div>
-        <h3>{prospect?.name??'Votre prochain projet'}</h3>
-        <p>Vous cliquez. L’IA fait le travail de direction artistique et compose un site original à partir des informations de l’entreprise.</p>
-        <ol className="studio-pipeline"><li><span>01</span>Identité, textes et composition uniques</li><li><span>02</span>Silhouette 3D dessinée pour l’activité</li><li><span>03</span>Contrôle des faits et relecture visuelle</li></ol>
-        <div className="studio-ai-status"><CircleDot className={`size-3 ${availability.available?'text-success':'text-warning'}`}/>{availability.available?`IA connectée · ${availability.provider}`:'Une connexion IA est nécessaire'}</div>
-        {!availability.available?<div className="studio-connect"><p>{availability.reason??'Choisissez Claude ou Codex une première fois.'}</p><Button asChild className="w-full"><Link href="/settings">Connecter mon IA <ArrowUpRight/></Link></Button></div>:<Button className="studio-generate-button" size="lg" disabled={!selected||!!busy} loading={!!busy} onClick={()=>selected&&generate(selected)}><Sparkles/>Créer le site sur mesure <ArrowUpRight/></Button>}
-        <p className="studio-fineprint">Aucun modèle de page prédéfini. La génération utilise votre abonnement ou votre fournisseur IA et son budget configuré.</p>
-      </aside>
+  return <>
+    <PageHeader title="Générateur de sites" description="Choisissez une entreprise. Votre IA imagine et crée son site sur mesure." actions={<Button variant="outline" asChild><Link href="/sites">Mes démos<ArrowUpRight/></Link></Button>}/>
+    <div className="generator-layout">
+      <Card><CardHeader title="1. Choisissez votre entreprise" description="Les informations de sa fiche servent de point de départ à la création." actions={<Badge>{candidates.length} entreprise{candidates.length > 1 ? 's' : ''}</Badge>}/><CardBody><div className="relative mb-5"><Search className="pointer-events-none absolute left-3.5 top-3.5 size-4 text-muted"/><Input className="pl-10" aria-label="Rechercher une entreprise" placeholder="Un nom, une ville…" value={q} onChange={e => setQ(e.target.value)}/></div><div className="candidate-list" role="group" aria-label="Entreprise à sélectionner">{visible.map(c => <button key={c.id} className={`candidate-option ${selected === c.id ? 'is-selected' : ''}`} disabled={creating} onClick={() => setSelected(c.id)} aria-pressed={selected === c.id} aria-label={`Sélectionner ${c.name}`}><span className="candidate-monogram">{c.name.slice(0, 1).toUpperCase()}</span><span className="min-w-0"><strong className="block truncate text-[13px] font-medium">{c.name}</strong><small className="mt-1 block text-[11px] text-muted">{c.city ?? 'Ville à renseigner'} · {c.sites ? `${c.sites} démo${c.sites > 1 ? 's' : ''}` : 'Première création'}</small></span><span className="candidate-radio" aria-hidden="true"/></button>)}</div>{candidates.length===100?<p className="mt-4 text-[11px] leading-6 text-muted">Les 100 premières entreprises sont affichées. Pour une autre entreprise, ouvrez <Link className="text-primary underline" href="/prospects">sa fiche dans Mes prospects</Link>.</p>:null}{!visible.length ? <EmptyState icon={<Search/>} title={q ? 'Aucune correspondance' : 'Votre première entreprise vous attend'} description={q ? 'Essayez un autre nom ou une autre ville.' : 'Trouvez un prospect ou importez votre liste pour commencer.'} action={!q ? <Button variant="outline" asChild><Link href="/search">Trouver un prospect<ArrowRight/></Link></Button> : undefined}/> : null}<Link href="/search" className="mt-5 flex items-center justify-center gap-2 rounded-xl border border-dashed border-border p-3 text-xs text-muted hover:text-primary"><Plus size={15}/>Trouver d’autres entreprises</Link></CardBody></Card>
+      <Card className="creation-brief"><CardHeader title="2. Lancez la création" description="Une seule action. Un site imaginé pour cette entreprise."/><CardBody><div className="creation-art" aria-hidden="true"><div className="creation-shape"/></div><p className="eyebrow">VOTRE PROCHAIN SITE</p><h2 className="mt-2 text-2xl font-medium tracking-tight">{prospect?.name ?? 'À vous de choisir'}</h2><p className="mt-3 text-xs leading-7 text-muted">Une identité visuelle, des textes et une scène 3D conçus à partir des informations de l’entreprise.</p><ul className="creation-checklist"><li><Check/>Design personnalisé, sans modèle de page</li><li><Check/>Aperçu sur ordinateur et mobile</li><li><Check/>Modifications, partage et export disponibles</li></ul>{creating ? <div role="status" aria-live="polite" className="rounded-2xl border border-primary/20 bg-primary/5 p-5"><div className="flex items-center gap-3 text-sm font-medium text-primary"><Loader2 className="size-5 animate-spin"/>{job?.status === 'RUNNING' ? 'Votre site prend forme…' : 'Création en préparation…'}</div><p className="mt-3 text-xs leading-6 text-muted">La conception peut prendre plusieurs minutes. Votre site s’ouvrira ici dès qu’il sera prêt.</p>{progress.isError ? <p className="mt-2 text-xs text-warning">Connexion interrompue. Nous réessayons automatiquement.</p> : null}</div> : !availability.available ? <div className="space-y-4"><Notice tone="warning" title="Connectez votre IA pour commencer">Choisissez votre fournisseur une première fois dans les paramètres. Vos réglages seront conservés.</Notice><Button asChild className="w-full"><Link href="/settings?tab=ai">Connecter mon IA<ArrowRight/></Link></Button></div> : <Button size="lg" className="w-full" disabled={!selected} onClick={generate}><Sparkles/>Créer le site sur mesure<ArrowRight/></Button>}{job && ['FAILED', 'CANCELLED'].includes(job.status) ? <div className="mt-4"><Notice tone="danger" title="La création n’a pas abouti">{job.error ?? 'Vous pouvez relancer la création.'}</Notice></div> : null}<p className="mt-4 text-[10px] leading-6 text-muted">La génération utilise le fournisseur IA et le budget définis dans vos paramètres. Relisez les informations avant de partager votre site.</p>{prospect ? <Link href={`/prospects/${prospect.id}`} className="mt-4 flex items-center gap-1.5 text-xs font-medium text-primary">Vérifier la fiche de l’entreprise<ArrowUpRight size={14}/></Link> : null}</CardBody></Card>
     </div>
-    <section className="studio-recent"><div className="flex items-center justify-between"><div><span className="studio-step">VOTRE PRODUCTION</span><h3 className="mt-2 text-xl font-semibold tracking-tight">Les dernières créations</h3></div><Link href="/sites" className="flex items-center gap-2 text-xs font-medium text-muted">Tous les sites <ArrowUpRight className="size-4"/></Link></div>
-      <div className="studio-job-list">{jobs.map(j=><div key={j.id} className="studio-job"><span className="studio-job-symbol">{['PENDING','RUNNING','RETRYING'].includes(j.status)?<Loader2 className="size-4 animate-spin"/>:<Sparkles className="size-4"/>}</span><div className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{j.name??'Création personnalisée'}</span><span className="text-xs text-muted">{j.error??({'PENDING':'En attente du worker','RUNNING':'En cours de conception','RETRYING':'Nouvelle tentative','COMPLETED':'Prêt à découvrir','FAILED':'La création a échoué'}[j.status]??j.status)}</span></div>{j.result?.websiteId?<Link className="studio-open-link" href={`/sites/${j.result.websiteId}`}>Découvrir <ArrowUpRight className="size-4"/></Link>:<span className="text-xs text-muted">{fmtRelative(j.created_at)}</span>}</div>)}{!jobs.length?<p className="py-8 text-sm text-muted">Votre première création apparaîtra ici.</p>:null}</div>
-    </section>
-  </div>
+    <Card className="mt-6"><CardHeader title="Vos dernières créations" description="Retrouvez une création en cours ou ouvrez un site terminé." actions={<Link href="/sites" className="text-xs text-primary">Toutes mes démos <ArrowUpRight className="ml-1 inline size-3.5"/></Link>}/><CardBody className="pt-1">{jobs.map(j => <div key={j.id} className="activity-row"><span className="activity-icon">{ACTIVE.includes(j.status) ? <Loader2 className="size-4 animate-spin"/> : j.status === 'COMPLETED' ? <CircleCheck size={18}/> : <Sparkles size={18}/>}</span><div className="min-w-0 flex-1"><p className="truncate text-[13px] font-medium">{j.name ?? 'Création personnalisée'}</p><p className="mt-1 text-[11px] text-muted">{j.status==='COMPLETED'&&!j.result?.websiteId?'Démo retirée':({ PENDING: 'En préparation', RUNNING: 'En cours de création', RETRYING: 'Nouvelle tentative', COMPLETED: 'Prête à découvrir', FAILED: 'À reprendre', CANCELLED: 'Annulée' }[j.status] ?? j.status)} · <RelativeTime date={j.created_at}/></p>{j.error ? <p className="mt-1 text-xs text-danger">{j.error}</p> : null}</div>{j.result?.websiteId ? <Button size="sm" variant="outline" asChild><Link href={`/sites/${j.result.websiteId}`}>Découvrir<ArrowUpRight/></Link></Button> : null}</div>)}{!jobs.length ? <p className="py-6 text-xs text-muted">Votre première création apparaîtra ici.</p> : null}</CardBody></Card>
+  </>
 }

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ExternalLink } from 'lucide-react'
 import { Badge, Card, CardBody, CardHeader, EmptyState, Notice, Table, Td, Th } from '@/components/ui/primitives'
+import { NextAction } from '@/components/workflow'
 import { EmailBadge, PipelineBadge, PresenceBadge, ScorePill } from '@/components/badges'
 import { getBusinessDetail } from '@/server/business/detail'
 import { getSettings } from '@/server/core/settings'
@@ -27,7 +28,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs text-muted"><Link href="/prospects" className="hover:text-fg">Base de prospects</Link> / fiche</p>
-          <h1 className="mt-1 flex flex-wrap items-center gap-2 text-xl font-semibold tracking-tight">
+          <h1 className="mt-2 flex flex-wrap items-center gap-3 text-3xl font-medium tracking-tight">
             {b.name} <ScorePill score={b.score} priority={b.priority} /> <PipelineBadge status={b.pipeline_status} />
             {b.do_not_contact ? <Badge tone="danger">Ne pas contacter</Badge> : null}
           </h1>
@@ -37,6 +38,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
         <ProspectActions id={b.id} status={b.pipeline_status} sites={(d.sites as unknown as { id: string; status: string }[]).filter((s) => s.status === 'READY').map((s) => s.id)} />
       </div>
 
+      <NextAction title={d.sites.length?'Votre démo est prête à être relue.':'Donnez une nouvelle dimension à cette entreprise.'} description={d.sites.length?'Ouvrez le site, ajustez-le si besoin, puis préparez votre email.':'Vérifiez ses informations, puis lancez la création de son site personnalisé.'} href={d.sites.length?`/sites/${d.sites[0]!.id}`:`/generator?business=${b.id}`} action={d.sites.length?'Ouvrir la démo':'Créer son site'}/>
       {d.merges.length ? <MergeReview id={b.id} merges={d.merges as never} /> : null}
 
       <div className="grid gap-6 xl:grid-cols-3">
@@ -112,7 +114,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
             ) : <EmptyState title="Aucun audit" description={b.website_url ? 'Lancez un audit depuis le menu Actions.' : 'Aucun site propre connu à auditer.'} />}
           </Card>
 
-          <Card>
+          <div id="demos" className="scroll-mt-5"><Card>
             <CardHeader title="Démonstrations générées" actions={<Link href={`/generator?business=${b.id}`} className="text-xs text-primary">Générer une variante</Link>} />
             {d.sites.length ? (
               <div className="grid gap-4 p-5 sm:grid-cols-2">
@@ -120,8 +122,8 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
                   <div key={s.id} className="overflow-hidden rounded-lg border border-border">
                     {s.thumbnail ? <img src={`/api/files/${s.thumbnail}`} alt="" className="aspect-[16/10] w-full object-cover" /> : <div className="grid aspect-[16/10] place-items-center bg-panel-2 text-xs text-muted">{s.status === 'READY' ? 'Capture en attente' : s.status}</div>}
                     <div className="space-y-1 p-3 text-xs">
-                      <p className="font-medium">{s.template_id} · {s.style} <Badge tone={s.status === 'READY' ? 'success' : s.status === 'ERROR' ? 'danger' : 'neutral'}>{s.status}</Badge></p>
-                      <p className="text-muted">v{s.current_version ?? '—'} · {s.generator}{s.model ? ` (${s.model})` : ''} · {fmtUsd(s.cost_usd)} · {s.view_count} vue(s)</p>
+                      <p className="font-medium">Version {s.current_version??'—'} <Badge tone={s.status === 'READY' ? 'success' : s.status === 'ERROR' ? 'danger' : 'neutral'}>{{READY:'Prête',GENERATING:'En création',ERROR:'À reprendre',DISABLED:'Désactivée'}[s.status]??s.status}</Badge></p>
+                      <p className="text-muted">{s.view_count} vue(s) · Site personnalisé</p>
                       {s.error ? <p className="text-danger">{s.error}</p> : null}
                       <div className="flex gap-3 pt-1">
                         <Link className="text-primary" href={`/sites/${s.id}`}>Éditer</Link>
@@ -132,7 +134,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
                 ))}
               </div>
             ) : <EmptyState title="Aucune démonstration" description="Actions → Générer un site." />}
-          </Card>
+          </Card></div>
 
           <ProposalViewer proposals={d.proposals as never} />
 

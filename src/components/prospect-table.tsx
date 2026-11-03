@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
-import { Globe, Mail, Phone } from 'lucide-react'
+import { ArrowUpRight, Globe, Mail, Phone } from 'lucide-react'
+import { useState } from 'react'
 import { useSelection } from './selection'
 import { EmailBadge, PipelineBadge, PresenceBadge, ScorePill } from './badges'
 import { Table, Td, Th } from './ui/primitives'
@@ -27,10 +28,11 @@ export interface ProspectRow {
 }
 
 export function ProspectTable({ rows }: { rows: ProspectRow[] }) {
+  const [detailed,setDetailed]=useState(false)
   const sel = useSelection()
   const all = rows.length > 0 && rows.every((r) => sel.has(r.id))
   return (
-    <Table>
+    <><div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"><p className="text-[11px] text-muted">Ouvrez une entreprise pour consulter sa fiche.</p><button className="text-[11px] font-medium text-primary" aria-pressed={detailed} onClick={()=>setDetailed(!detailed)}>{detailed?'Masquer les détails':'Afficher les détails des sources'}</button></div><Table>
       <thead>
         <tr>
           <Th className="w-8"><input type="checkbox" aria-label="Tout sélectionner" checked={all} onChange={(e) => sel.setMany(rows.map((r) => r.id), e.target.checked)} /></Th>
@@ -39,8 +41,7 @@ export function ProspectTable({ rows }: { rows: ProspectRow[] }) {
           <Th>Présence web</Th>
           <Th>Contact</Th>
           <Th>Statut</Th>
-          <Th className="text-right">Confiance</Th>
-          <Th>Sources</Th>
+          {detailed?<><Th className="text-right">Confiance</Th><Th>Sources</Th></>:null}<Th><span className="sr-only">Prochaine action</span></Th>
         </tr>
       </thead>
       <tbody>
@@ -63,11 +64,10 @@ export function ProspectTable({ rows }: { rows: ProspectRow[] }) {
               {r.phone ? <div className="mt-0.5 flex items-center gap-1 text-muted"><Phone className="size-3" />{formatPhone(r.phone)}</div> : null}
             </Td>
             <Td><PipelineBadge status={r.pipeline_status} /></Td>
-            <Td className="tabular text-right text-xs text-muted">{r.data_confidence ?? '—'}</Td>
-            <Td className="text-[11px] text-muted">{r.sources.join(', ')}</Td>
+            {detailed?<><Td className="tabular text-right text-xs text-muted">{r.data_confidence ?? '—'}</Td><Td className="text-[11px] text-muted">{r.sources.join(', ')}</Td></>:null}<Td><Link href={r.sites?`/prospects/${r.id}#demos`:`/generator?business=${r.id}`} className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-primary">{r.sites?'Voir les démos':'Créer un site'}<ArrowUpRight size={14}/></Link></Td>
           </tr>
         ))}
       </tbody>
-    </Table>
+    </Table><p className="px-5 py-3 text-[10px] text-muted sm:hidden">Faites défiler le tableau horizontalement pour voir toutes les informations.</p></>
   )
 }

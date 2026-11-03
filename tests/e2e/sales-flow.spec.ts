@@ -37,7 +37,7 @@ test('simple navigation, demo → email → signed payment → invoice/download 
   await page.reload();await expect(page.getByRole('heading',{name:'Paiement confirmé'})).toBeVisible();await expect(page.getByRole('link',{name:'Consulter la facture Stripe'})).toBeVisible()
   expect((await request.get(`/purchase/${token}/download`)).ok()).toBeTruthy()
   await page.goto('/sales');await expect(page.getByText('Payé',{exact:true})).toBeVisible()
-  await page.goto('/sites');page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Supprimer',exact:true}).click()
+  await page.goto('/sites');await page.getByRole('button',{name:'Supprimer',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Placer dans la corbeille',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.getByRole('button',{name:'Supprimer',exact:true})).toHaveCount(0)
   expect((await request.get(`/preview/${site!.preview_token}`)).status()).toBe(404)
   expect((await request.get(`/purchase/${token}/download`)).ok()).toBeTruthy()

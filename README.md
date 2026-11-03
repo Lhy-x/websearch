@@ -72,6 +72,8 @@ Le bouton **Créer le site sur mesure** utilise le skill **Premium 3D Glass** fo
 
 Voir le [parcours simple : emails, Stripe, factures et corbeille](docs/VENTES.md). Les paiements sont désactivés tant que le prix unique et Stripe ne sont pas configurés.
 
+Le guide intégré **Aide & prise en main** (`/guide`) explique les quatre étapes. Voir aussi la [navigation et les raccourcis de l’interface](docs/INTERFACE.md).
+
 ## Parcours principal
 
 1. **Recherche de prospects** : pays, ville/code postal (ou coordonnées), rayon, secteur, mots-clés, filtres de présence web.

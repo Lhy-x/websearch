@@ -11,6 +11,7 @@ import type { HtmlSite } from '@/lib/site/bespoke-schema'
 import { api, fmtDate } from '@/lib/utils'
 
 interface Props {
+  shareActions?: React.ReactNode
   site: { id: string; business_id: string; business_name: string; preview_enabled: boolean; preview_expires_at: string | null; generator: string | null; model: string | null; previewUrl: string }
   initial: { version: number; config: HtmlSite }
   versions: { version: number; created_by: string; note: string | null; created_at: string }[]
@@ -19,7 +20,7 @@ interface Props {
 
 const SUGGESTIONS = ['Rends le site plus chaleureux et plus lumineux', 'Mets davantage en avant le bouton d’appel sur mobile', 'Change la palette pour des tons bleu nuit et laiton', 'Typographie plus éditoriale, titres plus grands', 'Simplifie : moins de sections, plus d’air']
 
-export function HtmlEditor({ site, initial, versions, shots }: Props) {
+export function HtmlEditor({ site, initial, versions, shots, shareActions }: Props) {
   const router = useRouter()
   const runJob = useJobRunner()
   const [cfg, setCfg] = useState<HtmlSite>(initial.config)
@@ -64,12 +65,12 @@ export function HtmlEditor({ site, initial, versions, shots }: Props) {
   const plan = cfg.designPlan
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs text-muted"><Link href="/sites" className="hover:text-fg">Sites générés</Link> / <Link href={`/prospects/${site.business_id}`} className="hover:text-fg">{site.business_name}</Link></p>
-          <h1 className="text-lg font-semibold">Site sur mesure — v{base} <Badge tone="primary">IA</Badge>{dirty ? <Badge tone="warning" className="ml-2">non enregistré</Badge> : null}</h1>
-          <p className="text-xs text-muted">{site.generator}{site.model ? ` · ${site.model}` : ''}{site.preview_expires_at ? ` · démo jusqu’au ${fmtDate(site.preview_expires_at, false)}` : ''}</p>
+          <p className="text-xs text-muted"><Link href="/sites" className="hover:text-fg">Mes démos</Link> / <Link href={`/prospects/${site.business_id}`} className="hover:text-fg">{site.business_name}</Link></p>
+          <h1 className="mt-2 text-2xl font-medium tracking-tight">{site.business_name} <Badge tone="primary">Version {base}</Badge>{dirty ? <Badge tone="warning" className="ml-2">non enregistré</Badge> : null}</h1>
+          <p className="text-xs text-muted">Votre site sur mesure, à relire avant de partager{site.preview_expires_at ? ` · démo jusqu’au ${fmtDate(site.preview_expires_at, false)}` : ''}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" asChild><a href={site.previewUrl} target="_blank" rel="noopener noreferrer"><ExternalLink />Démo publique</a></Button>
@@ -86,8 +87,9 @@ export function HtmlEditor({ site, initial, versions, shots }: Props) {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[400px_1fr]">
-        <div className="space-y-4">
+      {shareActions}
+      <div className="grid items-start gap-6 xl:grid-cols-[350px_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-4">
           <Card>
             <CardHeader title="Demander une modification" description="L’IA réécrit le site selon votre demande, puis la nouvelle version repasse les contrôles (faits, contacts, rendu mobile)." />
             <CardBody className="space-y-2">
@@ -99,7 +101,7 @@ export function HtmlEditor({ site, initial, versions, shots }: Props) {
           </Card>
 
           {plan ? (
-            <Card>
+            <details className="ui-details"><summary>La direction artistique du site</summary><Card>
               <CardHeader title="Plan de design" />
               <CardBody className="space-y-2 text-xs">
                 <p><strong>Concept :</strong> {plan.concept}</p>
@@ -109,13 +111,13 @@ export function HtmlEditor({ site, initial, versions, shots }: Props) {
                 <p><strong>Signature :</strong> {plan.signature}</p>
                 {plan.revisions ? <p className="text-muted"><strong>Révisions :</strong> {plan.revisions}</p> : null}
               </CardBody>
-            </Card>
+            </Card></details>
           ) : null}
 
           <Card>
             <CardHeader title="Contrôle qualité" description={report ? `${report.passes} passe(s) de correction automatique` : 'Version modifiée à la main'} />
             <CardBody className="space-y-1.5 text-xs">
-              {report?.issues.length ? report.issues.map((i, k) => <p key={k} className="flex gap-2"><Badge tone={i.severity === 'critical' ? 'danger' : i.severity === 'major' ? 'warning' : 'neutral'}>{i.severity}</Badge>{i.message}</p>) : <p className="text-success">Aucun problème détecté (faits, contacts, rendu mobile et ordinateur).</p>}
+              {report?.issues.length ? report.issues.map((i, k) => <p key={k} className="flex gap-2"><Badge tone={i.severity === 'critical' ? 'danger' : i.severity === 'major' ? 'warning' : 'neutral'}>{i.severity}</Badge>{i.message}</p>) : <p className="text-success">{report?'Les contrôles automatiques n’ont pas relevé de problème. Relisez les informations avant partage.':'Aucun rapport disponible pour cette version modifiée.'}</p>}
               {report?.removed.length ? <Notice tone="info" title="Éléments retirés par la sécurité">{report.removed.slice(0, 12).join(', ')}{report.removed.length > 12 ? '…' : ''}</Notice> : null}
             </CardBody>
           </Card>
@@ -144,19 +146,19 @@ export function HtmlEditor({ site, initial, versions, shots }: Props) {
           </Card>
         </div>
 
-        <div className="min-w-0 space-y-3 xl:sticky xl:top-20 xl:self-start">
+        <div className="min-w-0 space-y-3 xl:sticky xl:top-6 xl:self-start">
           <div className="flex items-center justify-between">
             <div className="inline-flex rounded-lg border border-border bg-panel p-0.5">
-              <button onClick={() => setDevice('desktop')} className={`rounded-md p-1.5 ${device === 'desktop' ? 'bg-panel-2' : 'text-muted'}`} aria-label="Ordinateur"><Monitor className="size-4" /></button>
-              <button onClick={() => setDevice('mobile')} className={`rounded-md p-1.5 ${device === 'mobile' ? 'bg-panel-2' : 'text-muted'}`} aria-label="Mobile"><Smartphone className="size-4" /></button>
+              <button onClick={() => setDevice('desktop')} className={`grid size-10 place-items-center rounded-xl ${device === 'desktop' ? 'bg-panel-2' : 'text-muted'}`} aria-label="Ordinateur" aria-pressed={device==='desktop'}><Monitor className="size-4" /></button>
+              <button onClick={() => setDevice('mobile')} className={`grid size-10 place-items-center rounded-xl ${device === 'mobile' ? 'bg-panel-2' : 'text-muted'}`} aria-label="Mobile" aria-pressed={device==='mobile'}><Smartphone className="size-4" /></button>
             </div>
             <div className="flex items-center gap-2 text-xs">
               {shots.slice(0, 2).map((s) => <a key={s.path} href={`/api/files/${s.path}`} target="_blank" className="text-primary">{s.kind.replace('screenshot_', 'capture ')} v{s.version}</a>)}
               <Button size="sm" variant="ghost" onClick={() => runJob('Captures', () => post({ action: 'capture' }))}><Camera />Recapturer</Button>
             </div>
           </div>
-          <div className="grid place-items-center rounded-xl border border-border bg-panel-2 p-3">
-            <iframe title="Aperçu du site" sandbox={cfg.glassScene ? "allow-scripts allow-popups" : ""} srcDoc={html} className="rounded-lg border border-border bg-white" style={{ width: device === 'mobile' ? 390 : '100%', height: '78vh' }} />
+          <div className="grid place-items-center rounded-3xl border border-border bg-panel-2 p-3">
+            <iframe title="Aperçu du site" sandbox={cfg.glassScene ? "allow-scripts allow-popups" : ""} srcDoc={html} className="rounded-lg border border-border bg-white" style={{ width: device === 'mobile' ? 'min(390px, 100%)' : '100%', height: '78vh' }} />
           </div>
         </div>
       </div>

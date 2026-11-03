@@ -23,9 +23,10 @@ export default async function SiteEditorPage({ params }: { params: Promise<{ id:
   const settings = await getSettings()
   const siteProps = { ...site, preview_expires_at: site.preview_expires_at?.toISOString() ?? null, previewUrl: previewUrl(site.preview_token, settings.sites.previewBaseUrl) }
   const versionList = versions.map((x) => ({ ...x, created_at: x.created_at.toISOString() }))
-  if (v && isHtmlSite(v.config)) return <><SiteActions id={id} businessId={site.business_id} name={site.business_name} demoUrl={siteProps.previewUrl} active={site.status==='READY'&&site.preview_enabled&&(!site.preview_expires_at||site.preview_expires_at>new Date())}/><HtmlEditor site={siteProps} initial={{ version: v.version, config: v.config }} versions={versionList} shots={shots} /></>
+  const shareActions=<div className="rounded-2xl border border-border bg-panel px-5 py-2"><SiteActions id={id} businessId={site.business_id} name={site.business_name} demoUrl={siteProps.previewUrl} active={site.status==='READY'&&site.preview_enabled&&(!site.preview_expires_at||site.preview_expires_at>new Date())}/></div>
+  if (v && isHtmlSite(v.config)) return <><HtmlEditor shareActions={shareActions} site={siteProps} initial={{ version: v.version, config: v.config }} versions={versionList} shots={shots} /></>
   return (
-    <> <SiteActions id={id} businessId={site.business_id} name={site.business_name} demoUrl={siteProps.previewUrl} active={site.status==='READY'&&site.preview_enabled&&(!site.preview_expires_at||site.preview_expires_at>new Date())}/><Editor
+    <><Editor shareActions={shareActions}
       site={siteProps}
       initial={v && !isHtmlSite(v.config) ? { version: v.version, config: v.config } : null}
       versions={versions.map((x) => ({ ...x, created_at: x.created_at.toISOString() }))}

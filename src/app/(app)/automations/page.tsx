@@ -33,8 +33,8 @@ export default async function AutomationsPage({ searchParams }: { searchParams: 
           <CardHeader title={`Workers (${online.length} actif${online.length > 1 ? 's' : ''})`} description="Lancez un worker avec npm run worker" />
           <ul className="divide-y divide-border text-xs">
             {workers.map((w) => (
-              <li key={w.worker_id} className="flex items-center justify-between px-5 py-2.5">
-                <span className="font-mono">{w.worker_id}</span>
+              <li key={w.worker_id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                <span className="min-w-0 break-all font-mono">{w.worker_id}</span>
                 <Badge tone={Date.now() - w.last_seen_at.getTime() < 60_000 ? 'success' : 'danger'}>{Date.now() - w.last_seen_at.getTime() < 60_000 ? `actif · ${w.info.running ?? 0} en cours` : `muet ${fmtRelative(w.last_seen_at)}`}</Badge>
               </li>
             ))}

@@ -28,6 +28,7 @@ test('reference workflow end-to-end', async ({ page, request, baseURL }) => {
   await page.getByLabel('Secteur d’activité').selectOption('hair_salon')
   await page.getByLabel('Présence web').selectOption('no_website')
   // only Overture is reachable from CI sandboxes; Sirene is tried when available
+  await page.getByText(/Sources de recherche ·/).click()
   const sirene = page.getByLabel(/Sirene/)
   if (await sirene.isChecked()) await sirene.uncheck()
   await page.getByRole('button', { name: 'Lancer la recherche' }).click()

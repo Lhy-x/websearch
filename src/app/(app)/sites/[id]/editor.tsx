@@ -14,6 +14,7 @@ import { buildNavigation } from '@/lib/site/build'
 import { api, fmtDate } from '@/lib/utils'
 
 interface Props {
+  shareActions?: React.ReactNode
   site: { id: string; business_id: string; business_name: string; status: string; preview_enabled: boolean; preview_expires_at: string | null; generator: string | null; model: string | null; error: string | null; previewUrl: string }
   initial: { version: number; config: SiteConfig } | null
   versions: { version: number; created_by: string; note: string | null; created_at: string }[]
@@ -22,7 +23,7 @@ interface Props {
 
 const SECTION_LABELS: Record<Section['type'], string> = { about: 'Présentation', services: 'Prestations', benefits: 'Avantages', process: 'Méthode', gallery: 'Galerie', hours: 'Horaires', area: 'Zone', faq: 'FAQ', cta: 'Appel à l’action', contact: 'Contact' }
 
-export function Editor({ site, initial, versions, shots }: Props) {
+export function Editor({ site, initial, versions, shots, shareActions }: Props) {
   const router = useRouter()
   const runJob = useJobRunner()
   const [cfg, setCfg] = useState<SiteConfig | null>(initial?.config ?? null)
@@ -91,11 +92,11 @@ export function Editor({ site, initial, versions, shots }: Props) {
   if (!cfg) return <Notice tone="danger" title="Aucune version disponible">{site.error ?? 'La génération a échoué.'}</Notice>
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs text-muted"><Link href="/sites" className="hover:text-fg">Sites générés</Link> / <Link href={`/prospects/${site.business_id}`} className="hover:text-fg">{site.business_name}</Link></p>
-          <h1 className="text-lg font-semibold">Éditeur — v{base}{dirty ? <Badge tone="warning" className="ml-2">modifications non enregistrées</Badge> : null}</h1>
+          <p className="text-xs text-muted"><Link href="/sites" className="hover:text-fg">Mes démos</Link> / <Link href={`/prospects/${site.business_id}`} className="hover:text-fg">{site.business_name}</Link></p>
+          <h1 className="mt-2 text-2xl font-medium tracking-tight">{site.business_name} <Badge>Version {base}</Badge>{dirty ? <Badge tone="warning" className="ml-2">modifications non enregistrées</Badge> : null}</h1>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" asChild><a href={site.previewUrl} target="_blank" rel="noopener noreferrer"><ExternalLink />Démo publique</a></Button>
@@ -114,11 +115,12 @@ export function Editor({ site, initial, versions, shots }: Props) {
           <Button onClick={save} loading={saving} disabled={!dirty || !!renderError}><Save />Enregistrer</Button>
         </div>
       </div>
-      <p className="text-xs text-muted">Généré par {site.generator ?? '—'}{site.model ? ` (${site.model})` : ''} · démo {site.preview_enabled ? 'active' : 'désactivée'}{site.preview_expires_at ? `, expire le ${fmtDate(site.preview_expires_at, false)}` : ''} <button className="text-primary" onClick={() => action({ action: 'extend', days: 30 }, 'Démo prolongée de 30 jours')}>Prolonger de 30 j</button></p>
+      <p className="text-xs text-muted">Démo {site.preview_enabled ? 'active' : 'désactivée'}{site.preview_expires_at ? `, expire le ${fmtDate(site.preview_expires_at, false)}` : ''} <button className="text-primary" onClick={() => action({ action: 'extend', days: 30 }, 'Démo prolongée de 30 jours')}>Prolonger de 30 j</button></p>
       {renderError ? <Notice tone="danger" title="Configuration invalide">{renderError}</Notice> : null}
 
-      <div className="grid gap-4 xl:grid-cols-[420px_1fr]">
-        <div className="space-y-4">
+      {shareActions}
+      <div className="grid items-start gap-6 xl:grid-cols-[350px_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-4">
           <Card>
             <CardHeader title="Design" />
             <CardBody className="space-y-3">
@@ -222,19 +224,19 @@ export function Editor({ site, initial, versions, shots }: Props) {
           </Card>
         </div>
 
-        <div className="min-w-0 space-y-3 xl:sticky xl:top-20 xl:self-start">
+        <div className="min-w-0 space-y-3 xl:sticky xl:top-6 xl:self-start">
           <div className="flex items-center justify-between">
             <div className="inline-flex rounded-lg border border-border bg-panel p-0.5">
-              <button onClick={() => setDevice('desktop')} className={`rounded-md p-1.5 ${device === 'desktop' ? 'bg-panel-2' : 'text-muted'}`} aria-label="Ordinateur"><Monitor className="size-4" /></button>
-              <button onClick={() => setDevice('mobile')} className={`rounded-md p-1.5 ${device === 'mobile' ? 'bg-panel-2' : 'text-muted'}`} aria-label="Mobile"><Smartphone className="size-4" /></button>
+              <button onClick={() => setDevice('desktop')} className={`grid size-10 place-items-center rounded-xl ${device === 'desktop' ? 'bg-panel-2' : 'text-muted'}`} aria-label="Ordinateur" aria-pressed={device==='desktop'}><Monitor className="size-4" /></button>
+              <button onClick={() => setDevice('mobile')} className={`grid size-10 place-items-center rounded-xl ${device === 'mobile' ? 'bg-panel-2' : 'text-muted'}`} aria-label="Mobile" aria-pressed={device==='mobile'}><Smartphone className="size-4" /></button>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted">
               {shots.slice(0, 2).map((s) => <a key={s.path} href={`/api/files/${s.path}`} target="_blank" className="text-primary">{s.kind.replace('screenshot_', 'capture ')} v{s.version}</a>)}
               <Button size="sm" variant="ghost" onClick={() => runJob('Captures', () => api(`/api/sites/${site.id}`, { method: 'POST', json: { action: 'capture' } }))}><Camera />Recapturer</Button>
             </div>
           </div>
-          <div className="grid place-items-center rounded-xl border border-border bg-panel-2 p-3">
-            <iframe title="Aperçu du site" sandbox={cfg.glass3d ? "allow-scripts allow-popups" : ""} srcDoc={html} className="rounded-lg border border-border bg-white" style={{ width: device === 'mobile' ? 390 : '100%', height: '78vh' }} />
+          <div className="grid place-items-center rounded-3xl border border-border bg-panel-2 p-3">
+            <iframe title="Aperçu du site" sandbox={cfg.glass3d ? "allow-scripts allow-popups" : ""} srcDoc={html} className="rounded-lg border border-border bg-white" style={{ width: device === 'mobile' ? 'min(390px, 100%)' : '100%', height: '78vh' }} />
           </div>
         </div>
       </div>

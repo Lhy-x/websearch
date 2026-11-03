@@ -1,6 +1,7 @@
 'use client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, List, Loader2, Map as MapIcon, Play, Save, Trash2, CheckCircle2, XCircle, CircleDashed } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowRight, MapPin, Search, Download, List, Loader2, Map as MapIcon, Play, Save, Trash2, CheckCircle2, XCircle, CircleDashed } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
@@ -106,12 +107,13 @@ export function SearchWorkspace({ defaults, connectors }: { defaults: { country:
   const sel = useSelection()
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
+    <div className="grid items-start gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
       <div className="space-y-6">
         <Card>
-          <CardHeader title="Critères" />
+          <CardHeader title="Votre recherche" description="Une ville, une activité. On s’occupe de trouver les entreprises." />
           <CardBody>
-            <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); start.mutate() }}>
+            <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); start.mutate() }}>
+              <p className="eyebrow">1. OÙ CHERCHER ?</p>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Pays">
                   <Select value={form.country} onChange={(e) => set('country', e.target.value as Form['country'])}>
@@ -124,7 +126,7 @@ export function SearchWorkspace({ defaults, connectors }: { defaults: { country:
                 <Field label="Ville"><Input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Rouen" /></Field>
                 <Field label="Code postal"><Input value={form.postcode} onChange={(e) => set('postcode', e.target.value)} placeholder="76000" /></Field>
               </div>
-              <details className="text-xs">
+              <details className="ui-details">
                 <summary className="cursor-pointer text-muted">Région, département, coordonnées…</summary>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <Field label="Région"><Input value={form.region} onChange={(e) => set('region', e.target.value)} /></Field>
@@ -134,6 +136,7 @@ export function SearchWorkspace({ defaults, connectors }: { defaults: { country:
                 </div>
                 <p className="mt-2 text-muted">Les coordonnées, si renseignées, priment sur la ville. Région et département sont enregistrés avec la recherche ; le périmètre est défini par le centre et le rayon.</p>
               </details>
+              <p className="eyebrow pt-2">2. QUELLE ACTIVITÉ ?</p>
               <Field label="Secteur d’activité">
                 <Select value={form.sector} onChange={(e) => set('sector', e.target.value)}>
                   <option value="">Tous secteurs (mots-clés requis)</option>
@@ -141,7 +144,7 @@ export function SearchWorkspace({ defaults, connectors }: { defaults: { country:
                 </Select>
               </Field>
               <Field label="Mots-clés" hint="Filtre sur le nom et la catégorie (séparés par des virgules)"><Input value={form.keywords} onChange={(e) => set('keywords', e.target.value)} placeholder="barbier, coloration" /></Field>
-              <Field group label="Sources">
+              <details className="ui-details" open={!form.sources.length?true:undefined}><summary>Sources de recherche · {form.sources.length} sélectionnée(s)</summary><Field group label="Sources">
                 <div className="space-y-1.5">
                   {connectors.map((c) => (
                     <label key={c.id} className="flex items-start gap-2 text-xs">
@@ -154,7 +157,9 @@ export function SearchWorkspace({ defaults, connectors }: { defaults: { country:
                     </label>
                   ))}
                 </div>
-              </Field>
+              </Field></details>
+              {!form.sources.length?<Notice tone="warning" title="Choisissez au moins une source">Activez une source disponible ci-dessus, ou configurez-la dans <Link className="underline" href="/settings?tab=search">les paramètres</Link>.</Notice>:null}
+              <p className="eyebrow pt-2">3. QUELS PROSPECTS ?</p>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Présence web">
                   <Select value={form.websiteFilter} onChange={(e) => { set('websiteFilter', e.target.value); setPage(1) }}>
@@ -173,7 +178,7 @@ export function SearchWorkspace({ defaults, connectors }: { defaults: { country:
                 <label className="flex items-center gap-2"><input type="checkbox" checked={form.excludeContacted} onChange={(e) => set('excludeContacted', e.target.checked)} />Exclure les entreprises déjà prospectées</label>
               </div>
               <div className="flex gap-2 pt-1">
-                <Button type="submit" className="flex-1" loading={start.isPending} disabled={!form.sources.length}><Play />Lancer la recherche</Button>
+                <Button type="submit" className="min-w-0 flex-1" loading={start.isPending} disabled={!form.sources.length}><Search />Lancer la recherche</Button>
                 <Button type="button" variant="outline" onClick={() => setSaveOpen(true)} aria-label="Enregistrer la recherche"><Save /></Button>
               </div>
             </form>
@@ -184,8 +189,8 @@ export function SearchWorkspace({ defaults, connectors }: { defaults: { country:
 
       <div className="min-w-0 space-y-4">
         {!runId ? (
-          <Card><EmptyState icon={<Play />} title="Lancez une recherche" description="Exemple : France, Rouen, Coiffeur, 10 km, « Aucun site connu ». Les résultats sont enregistrés dans la base de prospects." /></Card>
-        ) : !run ? (
+          <Card><CardBody className="py-12"><div className="mx-auto mb-7 grid size-20 place-items-center rounded-3xl border border-primary/10 bg-primary/5 text-primary"><MapPin size={32} strokeWidth={1.5}/></div><h2 className="text-center text-2xl font-medium tracking-tight">Vos prochains clients sont quelque part ici.</h2><p className="mx-auto mt-4 max-w-md text-center text-xs leading-7 text-muted">Commencez avec une ville et une activité. Les entreprises trouvées seront enregistrées dans votre liste de prospects.</p><ol className="mx-auto mt-9 grid max-w-md gap-4">{['Choisissez votre zone et votre activité.','Lancez la recherche et laissez le traitement se terminer.','Ouvrez une entreprise, vérifiez sa fiche, puis créez son site.'].map((text,i)=><li key={text} className="flex items-center gap-3 text-xs text-muted"><span className="grid size-7 shrink-0 place-items-center rounded-full bg-panel-2 text-primary">{i+1}</span>{text}</li>)}</ol><div className="mt-8 border-t border-border pt-6 text-center"><Link href="/prospects" className="inline-flex items-center gap-2 text-xs font-medium text-primary">J’ai déjà des prospects<ArrowRight size={14}/></Link></div></CardBody></Card>
+        ) : runQ.isError ? (<Notice tone="danger" title="Cette recherche ne peut pas être chargée"><p>{(runQ.error as Error).message}</p><Button size="sm" variant="outline" className="mt-3" onClick={()=>runQ.refetch()}>Réessayer</Button></Notice>) : !run ? (
           <Card className="p-5"><Skeleton className="h-6 w-1/3" /><Skeleton className="mt-3 h-40 w-full" /></Card>
         ) : run.status !== 'COMPLETED' ? (
           <RunProgress info={runQ.data!} />
@@ -195,10 +200,10 @@ export function SearchWorkspace({ defaults, connectors }: { defaults: { country:
               title={`${fmtInt(results.data?.total)} prospect(s) correspondant aux filtres`}
               description={`${fmtInt(run.total_found)} établissements trouvés · ${fmtInt(run.new_count)} nouveaux · ${fmtInt(run.merge_pending_count)} doublon(s) potentiel(s) à vérifier`}
               actions={
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <div className="inline-flex rounded-lg border border-border p-0.5">
-                    <button onClick={() => setView('table')} className={`rounded-md p-1.5 ${view === 'table' ? 'bg-panel-2' : 'text-muted'}`} aria-label="Vue tableau"><List className="size-4" /></button>
-                    <button onClick={() => setView('map')} className={`rounded-md p-1.5 ${view === 'map' ? 'bg-panel-2' : 'text-muted'}`} aria-label="Vue carte"><MapIcon className="size-4" /></button>
+                    <button onClick={() => setView('table')} className={`rounded-md p-1.5 ${view === 'table' ? 'bg-panel-2' : 'text-muted'}`} aria-label="Vue tableau" aria-pressed={view==='table'}><List className="size-4" /></button>
+                    <button onClick={() => setView('map')} className={`rounded-md p-1.5 ${view === 'map' ? 'bg-panel-2' : 'text-muted'}`} aria-label="Vue carte" aria-pressed={view==='map'}><MapIcon className="size-4" /></button>
                   </div>
                   <Button size="sm" variant="outline" onClick={async () => { const all = await api<{ rows: { id: string }[] }>(`/api/prospects?${filterQs.replace(/page=\d+&pageSize=50/, 'page=1&pageSize=500')}`); sel.setMany(all.rows.map((r) => r.id), true); toast.success(`${all.rows.length} prospect(s) sélectionné(s)`) }}>Tout sélectionner</Button>
                   <Button size="sm" variant="outline" asChild><a href={`/api/prospects/export?${filterQs}`}><Download />CSV</a></Button>
@@ -216,7 +221,7 @@ export function SearchWorkspace({ defaults, connectors }: { defaults: { country:
               </div>
             ) : results.isLoading ? (
               <div className="space-y-2 p-5">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-            ) : results.data?.rows.length ? (
+            ) : results.isError ? (<div className="p-6"><Notice tone="danger" title="Les résultats ne sont pas disponibles"><Button size="sm" variant="outline" onClick={()=>results.refetch()}>Réessayer</Button></Notice></div>) : results.data?.rows.length ? (
               <>
                 <ProspectTable rows={results.data.rows} />
                 <Pager page={page} total={results.data.total} pageSize={50} onPage={setPage} />
@@ -254,14 +259,14 @@ function RunProgress({ info }: { info: RunInfo }) {
     <Card>
       <CardHeader title={failed ? 'La recherche a échoué' : 'Recherche en cours…'} description={run.progress_message ?? (run.job_status === 'PENDING' ? 'En attente d’un worker' : '')} />
       <CardBody className="space-y-4">
-        {!failed && !workersOnline ? <Notice tone="warning" title="Aucun worker actif">Les recherches sont exécutées par le worker. Lancez-le avec <code>npm run worker</code>.</Notice> : null}
+        {!failed && !workersOnline ? <Notice tone="warning" title="Le traitement n’a pas encore démarré">Le traitement attend le moteur de recherche. Vérifiez que l’application est bien lancée, puis consultez <Link href="/settings?tab=infra" className="underline">son état</Link>.</Notice> : null}
         {failed ? <Notice tone="danger">{run.error ?? run.job_error}</Notice> : (
-          <div className="h-1.5 overflow-hidden rounded-full bg-panel-2"><div className="h-full bg-primary transition-all" style={{ width: `${Math.max(4, (run.progress ?? 0) * 100)}%` }} /></div>
+          <div className="h-2 overflow-hidden rounded-full bg-panel-2" role="progressbar" aria-label="Progression de la recherche" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((run.progress??0)*100)}><div className="h-full bg-primary transition-all" style={{ width: `${Math.max(4, (run.progress ?? 0) * 100)}%` }} /></div>
         )}
-        <ul className="max-h-64 space-y-1 overflow-y-auto font-mono text-[11px] text-muted">
+        <details className="ui-details"><summary>Voir les détails du traitement</summary><ul className="max-h-64 space-y-1 overflow-y-auto font-mono text-[11px] text-muted">
           {logs.map((l, i) => <li key={i} className={l.level === 'warn' || l.level === 'error' ? 'text-warning' : ''}>{new Date(l.created_at).toLocaleTimeString('fr-FR')} · {l.message}</li>)}
           {!failed ? <li className="flex items-center gap-1"><Loader2 className="size-3 animate-spin" />…</li> : null}
-        </ul>
+        </ul></details>
       </CardBody>
     </Card>
   )

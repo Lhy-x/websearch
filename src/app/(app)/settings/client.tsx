@@ -2,6 +2,7 @@
 import {BillingSettings} from '@/components/billing-settings'
 import dynamic from 'next/dynamic'
 import {DataResetPanel} from '@/components/data-reset-panel'
+import {ResendWebhookSettings} from '@/components/resend-webhook-settings'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -130,6 +131,7 @@ export function SettingsClient({ settings, secrets, infra, offers, strategies, s
         <SaveBar />
         <details className="ui-details"><summary>Tester les envois et vérifier le domaine</summary><div className="space-y-5"><TestEmail onSend={(j) => post({ action: 'test_email', ...j })} />
         <DnsCheck onCheck={(d) => post({ action: 'dns_check', domain: d })} defaultDomain={s.outreach.senderEmail.split('@')[1] ?? ''} /></div></details>
+        <ResendWebhookSettings/>
       </TabsContent>
 
       <TabsContent value="sites" className="space-y-4">

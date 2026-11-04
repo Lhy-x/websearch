@@ -44,6 +44,35 @@ Une clé « enregistrée » signifie qu’elle est sauvegardée, pas que le comp
 Aucun email réel ni paiement réel n’est lancé par le simple enregistrement d’une clé.
 La configuration IMAP active la relève périodique des réponses quand le moteur tourne.
 
+## Webhook Resend automatique
+
+Ouvrir **Paramètres → Mes emails → Webhook Resend en un clic**. Le même panneau est visible dans
+**Clés & connexions → Email**.
+
+1. Coller une clé API Resend ayant les droits **Full access**, ou conserver une clé déjà enregistrée.
+   Une clé limitée à l’envoi ne peut pas gérer les webhooks.
+2. Renseigner l’adresse publique HTTPS de l’application. Sur Mac, si elle tourne sur localhost,
+   installer une fois `brew install cloudflared`, puis lancer
+   `cloudflared tunnel --url http://localhost:3000`. Copier son adresse HTTPS dans le panneau.
+3. Cliquer sur **Créer le webhook Resend**. L’application configure `email.sent`, `email.delivered`,
+   `email.bounced` et `email.complained`, puis enregistre la clé et le secret de signature chiffrés.
+   Le secret n’est jamais renvoyé au navigateur. Aucun email n’est envoyé par cette action et le
+   fournisseur d’envoi n’est pas changé automatiquement.
+4. **Désactiver le webhook** / **Activer le webhook** changent son état directement chez Resend.
+   Les clés restent enregistrées. Le panneau indique la dernière configuration connue ; les journaux
+   de tentatives et l’accessibilité effective de l’adresse se vérifient dans Resend.
+
+Une nouvelle création réutilise le webhook de la même adresse, récupère son secret et conserve
+ses éventuels événements supplémentaires. L’application évite ainsi les doublons. En cas d’erreur
+après une création distante, réessayer permet de récupérer le webhook déjà créé.
+Le suivi des livraisons ne connecte pas une boîte de réception : les réponses se relèvent par IMAP.
+
+Sur Mac, l’application et le tunnel doivent rester ouverts pour recevoir les événements.
+Une adresse de tunnel temporaire peut changer après redémarrage : reconfigurer alors le webhook.
+Les anciennes adresses restent chez Resend ; les retirer depuis son tableau de bord quand elles ne
+servent plus. Une URL saisie ne publie pas l’application à elle seule.
+Les tests du dépôt simulent l’API Resend et vérifient les signatures ; ils n’envoient pas d’email réel.
+
 ## Connexions et valeurs prioritaires
 
 Les cartes **Email** permettent de régler le fournisseur d’envoi, les serveurs, ports,

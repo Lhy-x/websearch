@@ -31,6 +31,7 @@ const env = {
   NEXT_DIST_DIR: '.next-e2e',
   PATH: `${stripeFixtureDir}${path.delimiter}${process.env.PATH ?? ''}`,
   PF_STRIPE_FIXTURE_MODE: 'ready',
+  NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ${JSON.stringify(path.resolve('tests/fixtures/resend-api.cjs'))}`,
 } as Record<string, string>
 
 export default defineConfig({

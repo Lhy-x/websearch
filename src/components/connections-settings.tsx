@@ -9,6 +9,7 @@ import { api, cn } from '@/lib/utils'
 import { Button } from './ui/button'
 import { ConfirmButton } from './ui/dialog'
 import { Badge, Card, CardBody, CardHeader, Field, Input, Notice, Select } from './ui/primitives'
+import { ResendWebhookSettings } from './resend-webhook-settings'
 
 type ConnectionData={values:RuntimeConfig;overrides:Settings['runtime'];maxConcurrentJobs:number;secrets:Record<string,'env'|'db'|'missing'>;bootstrap:{key:string;configured:boolean}[]}
 type Group='IA'|'Recherche'|'Email'|'Paiement'|'Réglages'
@@ -27,6 +28,7 @@ export function ConnectionsSettings({onSaved}:{onSaved?:(data:ConnectionData)=>v
     <div className="flex flex-wrap items-center justify-between gap-4"><nav className="flex max-w-full flex-wrap gap-2" aria-label="Types de connexions">{(['IA','Recherche','Email','Paiement','Réglages'] as Group[]).map(value=><Button key={value} size="sm" variant={group===value&&!query?'default':'outline'} aria-pressed={group===value&&!query} onClick={()=>{setGroup(value);setQuery('')}}>{value}</Button>)}</nav><label className="relative w-full sm:w-64"><Search className="absolute left-3.5 top-3.5 size-4 text-muted"/><Input className="pl-10" aria-label="Rechercher une clé" placeholder="Un service ou une clé…" value={query} onChange={e=>setQuery(e.target.value)}/></label></div>
     {group==='IA'&&!query?<Notice title="Claude ou ChatGPT par abonnement ?">Aucune clé API n’est nécessaire avec le CLI officiel connecté sur votre Mac. <Link href="/settings?tab=ai" className="font-medium underline">Choisir mon fournisseur IA</Link>. Pour connecter l’abonnement, lancez <code>claude auth login</code> ou <code>codex login</code> dans le Terminal de la machine qui crée les sites.</Notice>:null}
     {group==='Recherche'&&!query?<Notice title="Vous pouvez commencer sans clé">Overture et Recherche d’entreprises sont des sources publiques. Google Places est facultatif et peut entraîner une facturation chez Google.</Notice>:null}
+    {group==='Email'&&!query?<ResendWebhookSettings onSaved={load}/>:null}
     <div className="grid gap-5 xl:grid-cols-2">{visible.map(item=><SecretEditor key={item.key} guide={item} source={data.secrets[item.key]??'missing'} onSaved={load}/>)}</div>
     {query&&!visible.length?<p className="rounded-2xl border border-border bg-panel p-7 text-sm text-muted">Aucun service ne correspond à cette recherche.</p>:null}
     {!query&&['Réglages','Email','Recherche'].includes(group)?<RuntimeForm key={group} data={data} section={group} onSaved={load}/>:null}

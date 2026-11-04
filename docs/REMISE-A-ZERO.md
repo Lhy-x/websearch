@@ -37,8 +37,9 @@ de réimporter immédiatement d’anciennes réponses. Réactivez vos services d
 « Utiliser .env » permet de reprendre une clé existante. Les anciennes surcharges sont effacées. Les anciennes sélections et l’historique local de l’assistant sont retirés à
 la réouverture du nouvel espace.
 
-Les données et paiements détenus par Stripe ne sont pas supprimés. Les fichiers sur disque,
-notamment les sauvegardes et les anciens médias, sont conservés. La commande ne touche pas
+Les données et paiements détenus par Stripe ne sont pas supprimés. Les webhooks du compte
+Resend restent également en place. Les fichiers sur disque, notamment les sauvegardes et les
+anciens médias, sont conservés. La commande ne touche pas
 aux tables d’autres applications et n’utilise pas de `TRUNCATE CASCADE`.
 
 ## Sauvegarde avant effacement

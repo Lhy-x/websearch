@@ -1,10 +1,12 @@
 import { test, expect } from '@playwright/test'
 
-test('test webhook starts and stops from settings, saves keys privately and preserves the offer being edited', async ({ page, request }, testInfo) => {
+test('test webhook starts and stops from settings, saves keys privately and preserves the offer being edited', async ({ page, request, baseURL }, testInfo) => {
   test.setTimeout(90000)
   page.setDefaultTimeout(15000)
   expect((await request.post('/api/billing/test-listener', { data: {} })).status()).toBe(401)
   await page.request.post('/api/auth/login', { data: { email: 'admin@e2e.local', password: 'e2e-password-123' } })
+  // Mac binds Next to 127.0.0.1, while the browser uses localhost and public links may use a tunnel.
+  await page.request.put('/api/settings', { data: { runtime: { APP_BASE_URL: 'https://configured-origin.example.test' } } })
   await page.request.delete('/api/billing/test-listener')
   // This test uses tests/fixtures/stripe-cli.cjs on PATH, never a real Stripe account.
   try {
@@ -44,5 +46,8 @@ test('test webhook starts and stops from settings, saves keys privately and pres
     await expect(panel.getByText(/Les clés réelles ne sont pas acceptées/)).toHaveCount(0)
     await panel.getByRole('button', { name: 'Arrêter', exact: true }).click()
     await expect(panel.getByText('Arrêté', { exact: true })).toBeVisible()
-  } finally { await page.request.delete('/api/billing/test-listener') }
+  } finally {
+    await page.request.delete('/api/billing/test-listener')
+    await page.request.put('/api/settings', { data: { runtime: { APP_BASE_URL: baseURL } } })
+  }
 })

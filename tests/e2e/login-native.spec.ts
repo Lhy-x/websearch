@@ -1,6 +1,7 @@
 import {expect,test} from '@playwright/test'
 
-test('login works without JavaScript and never submits a password in the URL',async({browser,baseURL})=>{
+test('login works without JavaScript and never submits a password in the URL',async({browser,baseURL,request})=>{
+ expect((await request.post('/api/auth/login',{headers:{origin:'https://foreign.example.test','sec-fetch-site':'cross-site'},form:{email:'admin@e2e.local',password:'e2e-password-123'}})).status()).toBe(403)
  const context=await browser.newContext({baseURL,javaScriptEnabled:false})
  try {
   const page=await context.newPage()

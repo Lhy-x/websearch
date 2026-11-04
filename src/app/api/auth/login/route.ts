@@ -7,6 +7,7 @@ import { verifyPassword } from '@/server/core/crypto'
 import { SESSION_COOKIE, SESSION_TTL_S, signSession } from '@/lib/session'
 import { auditLog } from '@/server/core/audit'
 import { jsonError } from '@/server/http/route'
+import { assertSameOrigin } from '@/server/http/origin'
 
 const schema = z.object({ email: z.string().email(), password: z.string().min(1).max(200), next: z.string().optional() })
 const MAX_FAILS = 5
@@ -24,10 +25,7 @@ export async function POST(req: Request) {
     const e=env()
     const runtime=await getRuntimeConfig()
     // Native forms can submit before hydration; permit same-origin only, never credentials in a GET URL.
-    const origin=req.headers.get('origin')
-    if(native && (req.headers.get('sec-fetch-site')==='cross-site' || (origin && origin!==new URL(req.url).origin && origin!==new URL(runtime.APP_BASE_URL).origin))) {
-      return NextResponse.json({error:'Origine de connexion non autorisée'},{status:403})
-    }
+    if(native)await assertSameOrigin(req,runtime.APP_BASE_URL)
     const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0]!.trim() || 'local'
     const db = sql()
     const [{ n } = { n: 0 }] = await db<{ n: number }[]>`select count(*)::int n from login_attempts where ip = ${ip} and not success and created_at > now() - interval '15 minutes'`

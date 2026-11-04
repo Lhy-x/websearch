@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test'
 
-test('Resend webhook can be created, reused, disabled and enabled with a private secret from both settings panels',async({page,request},testInfo)=>{
+test('Resend webhook can be created, reused, disabled and enabled with a private secret from both settings panels',async({page,request,baseURL},testInfo)=>{
   test.setTimeout(90000)
   page.setDefaultTimeout(15000)
   expect((await request.post('/api/connections/resend-webhook',{data:{base:'https://resend-e2e.example.test'}})).status()).toBe(401)
   await page.request.post('/api/auth/login',{data:{email:'admin@e2e.local',password:'e2e-password-123'}})
+  await page.request.put('/api/settings',{data:{runtime:{APP_BASE_URL:'https://configured-origin.example.test'}}})
   try {
     await page.goto('/settings?tab=outreach')
     const panel=page.locator('#resend-webhook')
@@ -42,5 +43,6 @@ test('Resend webhook can be created, reused, disabled and enabled with a private
   } finally {
     await page.request.patch('/api/connections/resend-webhook',{data:{enabled:false}})
     for (const key of ['RESEND_API_KEY','RESEND_WEBHOOK_SECRET']) await page.request.post('/api/settings',{data:{action:'secret',key,value:null}})
+    await page.request.put('/api/settings',{data:{runtime:{APP_BASE_URL:baseURL}}})
   }
 })

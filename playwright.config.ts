@@ -21,7 +21,7 @@ const PORT = Number(process.env.E2E_PORT ?? 3100)
 const env = {
   ...process.env,
   DATABASE_URL: process.env.E2E_DATABASE_URL ?? 'postgres://pf:pf@localhost:5432/prospectforge_e2e',
-  APP_BASE_URL: `http://localhost:${PORT}`,
+  APP_BASE_URL: process.env.E2E_APP_BASE_URL ?? `http://localhost:${PORT}`,
   EMAIL_PROVIDER: 'sandbox',
   STORAGE_DIR: './storage-e2e',
   ADMIN_EMAIL: 'admin@e2e.local',
@@ -44,7 +44,7 @@ export default defineConfig({
   reporter: [['list']],
   use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   webServer: [
-    { command: `npx tsx scripts/migrate.ts && npx next dev -p ${PORT}`, url: `http://localhost:${PORT}/api/health`, env, timeout: 180_000, reuseExistingServer: false },
+    { command: `npx tsx scripts/migrate.ts && npx next dev --webpack -H 127.0.0.1 -p ${PORT}`, url: `http://localhost:${PORT}/api/health`, env, timeout: 180_000, reuseExistingServer: false },
     { command: 'npx tsx src/worker/main.ts', env, wait: { stdout: /démarré/ }, timeout: 120_000, reuseExistingServer: false },
   ],
 })

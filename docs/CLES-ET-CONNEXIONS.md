@@ -89,6 +89,12 @@ surcharge. Une saisie vide dans le formulaire ne supprime pas une clé par accid
 L’adresse publique doit correspondre à une application réellement hébergée. Renseigner
 un domaine ne publie pas le site. Pour tester Stripe sur localhost, suivre [VENTES.md](VENTES.md).
 
+L’interface peut rester ouverte sur `http://localhost:3000` lorsque l’adresse publique est
+configurée pour un tunnel ou un domaine. Les boutons Stripe et Resend vérifient l’origine
+avec l’adresse HTTP reçue du navigateur, même si Next écoute sur `127.0.0.1`.
+Pour un proxy qui réécrit aussi `Host`, préserver `X-Forwarded-Host` et `X-Forwarded-Proto` ;
+les requêtes de navigateur provenant d’un autre site restent refusées.
+
 ## Paramètres de démarrage
 
 `DATABASE_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `SESSION_SECRET`, `APP_ENCRYPTION_KEY`

@@ -104,7 +104,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
 
 export function Table({ className, ...p }: React.TableHTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="max-w-full overflow-x-auto">
+    <div className="relative max-w-full overflow-x-auto">
       <table className={cn('ui-table w-full text-sm', className)} {...p} />
     </div>
   )

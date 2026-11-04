@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Bot, Check, Play, Send, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge, Card, Notice, Table, Td, Th } from '@/components/ui/primitives'
-import { useSelection } from '@/components/selection'
+import { ensureWorkspaceStorage,useSelection } from '@/components/selection'
 import { api } from '@/lib/utils'
 
 interface ToolResult { summary: string; rows?: Record<string, unknown>[]; links?: { label: string; href: string }[] }
@@ -29,12 +29,13 @@ export function AssistantClient() {
   const end = useRef<HTMLDivElement>(null)
   useEffect(() => {
     try {
+      ensureWorkspaceStorage(sel.workspaceEpoch)
       const raw = localStorage.getItem(KEY)
       if (raw) setTurns((JSON.parse(raw) as Turn[]).filter((t) => !t.pending))
     } catch {
       /* ignore */
     }
-  }, [])
+  }, [sel.workspaceEpoch])
   useEffect(() => {
     try {
       localStorage.setItem(KEY, JSON.stringify(turns.slice(-30)))

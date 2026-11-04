@@ -144,3 +144,6 @@ bash LANCER-MAC.command
 
 Notez le nouveau mot de passe affiché dans votre terminal sans le partager. L’email,
 la base et les autres réglages sont conservés ; les anciennes sessions sont invalidées.
+
+
+Les clés API, les réglages SMTP / IMAP et leurs mini tutos sont disponibles dans **Paramètres → Clés & connexions**. Voir [CLES-ET-CONNEXIONS.md](CLES-ET-CONNEXIONS.md). Pour effacer les données avec sauvegarde en gardant l’admin : [REMISE-A-ZERO.md](REMISE-A-ZERO.md).

@@ -3,8 +3,7 @@ import { notFound } from 'next/navigation'
 import { Badge, Card, CardHeader, EmptyState, Notice, Table, Td, Th } from '@/components/ui/primitives'
 import { Stat } from '@/components/stat'
 import { sql } from '@/server/core/db'
-import { getFlags } from '@/server/core/settings'
-import { env } from '@/server/core/env'
+import { getRuntimeConfig, getFlags } from '@/server/core/settings'
 import { campaignStats } from '@/server/campaigns/queries'
 
 import { fmtDate, fmtInt, fmtPct } from '@/lib/utils'
@@ -26,6 +25,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
     select o.id, b.name business_name, o.to_email, o.step, o.subject, o.body_text, o.status, o.scheduled_at, o.sent_at, o.last_error, o.provider_message_id
     from outbound_messages o left join businesses b on b.id = o.business_id where o.campaign_id = ${id} order by o.created_at desc limit 300`
   const flags = await getFlags()
+  const runtime=await getRuntimeConfig()
   const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
   const s = stats!
   return (
@@ -34,13 +34,13 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
         <div>
           <p className="text-xs text-muted"><Link href="/campaigns" className="hover:text-fg">Campagnes</Link></p>
           <h1 className="mt-1 flex items-center gap-2 text-xl font-semibold">{c.name} <Badge tone={c.status === 'ACTIVE' ? 'success' : c.status === 'PAUSED' ? 'warning' : c.status === 'STOPPED' ? 'danger' : 'neutral'}>{c.status}</Badge><Badge>{c.mode}</Badge></h1>
-          <p className="mt-1 text-xs text-muted">{c.from_name} &lt;{c.from_email ?? 'expéditeur non défini'}&gt; · {c.timezone} · {c.send_days.map((d) => ['L', 'M', 'M', 'J', 'V', 'S', 'D'][d - 1]).join('')} {hm(c.send_start_minute)}–{hm(c.send_end_minute)} · {c.daily_limit}/jour · ≥ {c.min_interval_seconds} s entre envois · fournisseur : {env().EMAIL_PROVIDER}</p>
+          <p className="mt-1 text-xs text-muted">{c.from_name} &lt;{c.from_email ?? 'expéditeur non défini'}&gt; · {c.timezone} · {c.send_days.map((d) => ['L', 'M', 'M', 'J', 'V', 'S', 'D'][d - 1]).join('')} {hm(c.send_start_minute)}–{hm(c.send_end_minute)} · {c.daily_limit}/jour · ≥ {c.min_interval_seconds} s entre envois · fournisseur : {runtime.EMAIL_PROVIDER}</p>
           {c.stop_reason ? <p className="mt-1 text-xs text-warning">{c.stop_reason}</p> : null}
         </div>
         <CampaignControls id={c.id} status={c.status} mode={c.mode} />
       </div>
       {flags.emergencyStop ? <div className="mb-4"><Notice tone="danger" title="Arrêt d’urgence actif">Aucun email n’est envoyé tant que l’arrêt d’urgence est actif (Automatisations).</Notice></div> : null}
-      {env().EMAIL_PROVIDER === 'sandbox' ? <div className="mb-4"><Notice tone="warning" title="Fournisseur email : sandbox">Les messages sont simulés et enregistrés, jamais envoyés. Configurez Resend ou SMTP (EMAIL_PROVIDER) pour des envois réels.</Notice></div> : null}
+      {runtime.EMAIL_PROVIDER === 'sandbox' ? <div className="mb-4"><Notice tone="warning" title="Fournisseur email : sandbox">Les messages sont simulés et enregistrés, jamais envoyés. Configurez Resend ou SMTP (EMAIL_PROVIDER) pour des envois réels.</Notice></div> : null}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
         <Stat label="Prospects" value={fmtInt(s.prospects)} hint={`${fmtInt(s.active)} en séquence`} />
         <Stat label="À valider" value={fmtInt(s.awaiting)} />

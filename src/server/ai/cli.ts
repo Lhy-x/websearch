@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { z } from 'zod'
+import { getRuntimeConfig } from '../core/settings'
 import { AppError, NotConfiguredError, TransientError } from '../core/errors'
 
 /**
@@ -13,8 +14,9 @@ import { AppError, NotConfiguredError, TransientError } from '../core/errors'
  */
 export type CliProvider = 'claude-code' | 'codex'
 
-export function cliBinary(p: CliProvider): string {
-  return p === 'claude-code' ? process.env.CLAUDE_CLI_PATH || 'claude' : process.env.CODEX_CLI_PATH || 'codex'
+export async function cliBinary(p: CliProvider): Promise<string> {
+  const runtime=await getRuntimeConfig()
+  return p === 'claude-code' ? runtime.CLAUDE_CLI_PATH || 'claude' : runtime.CODEX_CLI_PATH || 'codex'
 }
 
 interface RunResult {
@@ -140,7 +142,7 @@ export async function callCli(c: CliCall): Promise<CliOutput> {
       const input = withImages
         ? JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'text', text: c.prompt }, ...c.images!.map((i) => ({ type: 'image', source: { type: 'base64', media_type: i.mediaType, data: i.data } }))] } }) + '\n'
         : c.prompt
-      const r = await run(cliBinary('claude-code'), args, input, { cwd: dir, timeoutMs })
+      const r = await run(await cliBinary('claude-code'), args, input, { cwd: dir, timeoutMs })
       let out: { is_error?: boolean; result?: string; structured_output?: unknown; total_cost_usd?: number; usage?: { input_tokens?: number; output_tokens?: number }; modelUsage?: Record<string, unknown>; subtype?: string }
       try {
         const line = withImages ? r.stdout.split('\n').reverse().find((l) => l.includes('"type":"result"')) ?? '' : r.stdout
@@ -172,7 +174,7 @@ export async function callCli(c: CliCall): Promise<CliOutput> {
     }
     args.push('-')
     const prompt = `${c.system}\n\nN'exécute aucune commande et ne lis aucun fichier : réponds directement avec l'objet JSON demandé.\n\n${c.prompt}`
-    const r = await run(cliBinary('codex'), args, prompt, { cwd: dir, timeoutMs })
+    const r = await run(await cliBinary('codex'), args, prompt, { cwd: dir, timeoutMs })
     if (r.code !== 0) throw classifyFailure('codex', `${r.stderr} ${r.stdout}`)
     const answer = await readFile(outFile, 'utf8').catch(() => '')
     if (!answer.trim()) throw classifyFailure('codex', r.stderr || 'réponse vide')
@@ -189,27 +191,29 @@ export interface CliStatus {
   detail: string
 }
 
-const statusCache = new Map<CliProvider, { at: number; value: CliStatus }>()
+const statusCache = new Map<string, { at: number; value: CliStatus }>()
 
 /** Is the CLI installed and logged in? (cached 5 min; no model call) */
 export async function cliStatus(p: CliProvider, fresh = false): Promise<CliStatus> {
-  const cached = statusCache.get(p)
+  const binary=await cliBinary(p)
+  const cacheKey=p+':'+binary
+  const cached = statusCache.get(cacheKey)
   if (!fresh && cached && Date.now() - cached.at < 5 * 60_000) return cached.value
   let value: CliStatus
   try {
     if (p === 'claude-code') {
-      const r = await run(cliBinary(p), ['auth', 'status', '--json'], null, { timeoutMs: 20_000 })
+      const r = await run(binary, ['auth', 'status', '--json'], null, { timeoutMs: 20_000 })
       const j = JSON.parse(r.stdout || '{}') as { loggedIn?: boolean; authMethod?: string }
       value = { installed: true, loggedIn: !!j.loggedIn, detail: j.loggedIn ? `connecté (${j.authMethod ?? 'compte Anthropic'})` : 'non connecté : lancez « claude auth login »' }
     } else {
-      const r = await run(cliBinary(p), ['login', 'status'], null, { timeoutMs: 20_000 })
+      const r = await run(binary, ['login', 'status'], null, { timeoutMs: 20_000 })
       const text = `${r.stdout} ${r.stderr}`.trim()
       const ok = r.code === 0 && !/not logged in/i.test(text)
       value = { installed: true, loggedIn: ok, detail: ok ? text.split('\n').find((l) => /logged in/i.test(l)) ?? 'connecté' : 'non connecté : lancez « codex login »' }
     }
   } catch (e) {
-    value = e instanceof NotConfiguredError ? { installed: false, loggedIn: false, detail: `${cliBinary(p)} introuvable` } : { installed: true, loggedIn: null, detail: (e as Error).message }
+    value = e instanceof NotConfiguredError ? { installed: false, loggedIn: false, detail: `${binary} introuvable` } : { installed: true, loggedIn: null, detail: (e as Error).message }
   }
-  statusCache.set(p, { at: Date.now(), value })
+  statusCache.set(cacheKey, { at: Date.now(), value })
   return value
 }

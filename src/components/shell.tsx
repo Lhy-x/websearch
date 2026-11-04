@@ -94,7 +94,7 @@ export function Shell({ children, flags, unread }: { children: React.ReactNode; 
         <div className="header-actions"><Link href="/inbox" className="header-icon inbox-shortcut" aria-label={unread ? `Boîte de réception, ${unread} non lus` : 'Boîte de réception'}><Inbox size={19}/>{unread ? <span className="unread-dot"/> : null}</Link><button className="header-icon" aria-label="Changer de thème" onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>{mounted && resolvedTheme === 'dark' ? <Sun size={19}/> : <Moon size={19}/>}</button><Link href="/settings" className="account-avatar" aria-label="Ouvrir les paramètres">PF</Link></div>
       </header>
       {flags.emergencyStop || flags.globalPause ? <div className={cn('system-banner', flags.emergencyStop && 'text-danger')}><span>{flags.emergencyStop ? <ShieldAlert size={16}/> : <Pause size={16}/>}</span><p>{flags.emergencyStop ? 'Les envois sont arrêtés.' : 'Les automatisations sont en pause.'}</p><Link href="/automations">Gérer <ArrowUpRight size={14}/></Link></div> : null}
-      <main id="main-content" tabIndex={-1} className="app-main">{stage ? <WorkflowSteps current={stage}/> : null}{children}</main>
+      <main id="main-content" tabIndex={-1} className="app-main"><div key={path} className="route-surface">{stage ? <WorkflowSteps current={stage}/> : null}{children}</div></main>
       <footer className="app-footer"><span>ProspectForge · Votre prochain projet commence ici.</span><Link href="/guide">Besoin d’un coup de main ? <ArrowUpRight size={13}/></Link></footer>
     </div>
   </div>

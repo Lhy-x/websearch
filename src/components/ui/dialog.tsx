@@ -9,8 +9,8 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
   return (
     <D.Root open={open} onOpenChange={onOpenChange}>
       <D.Portal>
-        <D.Overlay className="fixed inset-0 z-40 bg-[#10291c]/35 backdrop-blur-sm" />
-        <D.Content className={cn('fixed left-1/2 top-1/2 z-50 max-h-[90svh] w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl border border-border bg-panel shadow-2xl', wide ? 'max-w-3xl' : 'max-w-lg')}>
+        <D.Overlay className="dialog-overlay fixed inset-0 z-40 bg-[#10291c]/35 backdrop-blur-sm" />
+        <D.Content className={cn('dialog-content fixed left-1/2 top-1/2 z-50 max-h-[90svh] w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl border border-border bg-panel shadow-2xl', wide ? 'max-w-3xl' : 'max-w-lg')}>
           <div className="flex items-start justify-between border-b border-border px-6 py-5">
             <div>
               <D.Title className="text-base font-semibold tracking-tight">{title}</D.Title>
@@ -50,7 +50,7 @@ export function ConfirmButton({ label, title, description, confirmLabel = 'Confi
   const [busy, setBusy] = useState(false)
   return (
     <>
-      <Button variant={variant === 'danger' ? 'outline' : variant} size={size} onClick={() => setOpen(true)} disabled={disabled} className={variant === 'danger' ? 'text-danger' : undefined}>
+      <Button type="button" variant={variant === 'danger' ? 'outline' : variant} size={size} onClick={() => setOpen(true)} disabled={disabled} className={variant === 'danger' ? 'text-danger' : undefined}>
         {icon}
         {label}
       </Button>

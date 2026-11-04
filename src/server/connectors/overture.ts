@@ -1,6 +1,6 @@
 import { asyncBufferFromUrl, parquetMetadataAsync, parquetReadObjects, type AsyncBuffer, type FileMetaData } from 'hyparquet'
 import { compressors } from 'hyparquet-compressors'
-import { env } from '../core/env'
+import { getRuntimeConfig } from '../core/settings'
 import { TransientError } from '../core/errors'
 import { bboxAround, bboxIntersects, haversineKm, type BBox } from '../core/geo'
 import { sectorFromOverture } from '@/lib/sectors'
@@ -37,7 +37,8 @@ async function s3List(prefix: string, delimiter?: string): Promise<{ keys: strin
 }
 
 export async function latestOvertureRelease(): Promise<string> {
-  if (env().OVERTURE_RELEASE) return env().OVERTURE_RELEASE
+  const runtime=await getRuntimeConfig()
+  if (runtime.OVERTURE_RELEASE) return runtime.OVERTURE_RELEASE
   if (cache.release && Date.now() - cache.release.at < 6 * 3600_000) return cache.release.value
   const { prefixes } = await s3List('release/', '/')
   const releases = prefixes.map((p) => p.replace(/^release\//, '').replace(/\/$/, '')).filter((r) => /^\d{4}-\d{2}-\d{2}\.\d+$/.test(r)).sort()

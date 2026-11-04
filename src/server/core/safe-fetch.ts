@@ -1,7 +1,7 @@
 import { lookup as dnsLookup } from 'node:dns'
 import { isIP } from 'node:net'
 import { Agent, ProxyAgent, fetch as ufetch, type Dispatcher } from 'undici'
-import { env } from './env'
+import { getRuntimeConfig } from './settings'
 
 /**
  * SSRF-hardened HTTP client for fetching UNTRUSTED urls (prospect websites, imported data):
@@ -92,7 +92,7 @@ export async function safeFetch(
   const redirects: string[] = []
   let current = assertSafeUrl(url, opts).toString()
   const maxBytes = opts.maxBytes ?? 2_000_000
-  const contact = env().CRAWLER_CONTACT
+  const contact = (await getRuntimeConfig()).CRAWLER_CONTACT
   for (let hop = 0; hop <= 5; hop++) {
     const ctl = new AbortController()
     const timer = setTimeout(() => ctl.abort(), opts.timeoutMs ?? 15_000)

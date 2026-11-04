@@ -28,6 +28,7 @@ const schema = z.object({
   SMTP_SECURE: z.enum(['true', 'false']).default('false'),
   IMAP_HOST: z.string().default(''),
   IMAP_PORT: z.coerce.number().default(993),
+  IMAP_SECURE: z.enum(['true', 'false']).default('true'),
   IMAP_USER: z.string().default(''),
   IMAP_PASSWORD: z.string().default(''),
   INBOUND_WEBHOOK_SECRET: z.string().default(''),

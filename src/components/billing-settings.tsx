@@ -7,9 +7,9 @@ import {Card,CardBody,CardHeader,Field,Input,Notice} from './ui/primitives'
 import {api} from '@/lib/utils'
 import type {Settings} from '@/server/core/settings'
 export function BillingSettings({onSaved}:{onSaved?:(data:{commerce:Settings['commerce'];base:string})=>void}) {
- const [data,setData]=useState<{ready:boolean;reason:string;live:boolean;base:string;keyConfigured:boolean;webhookConfigured:boolean;commerce:Settings['commerce']}|null>(null)
+ const [data,setData]=useState<{ready:boolean;reason:string;live:boolean;base:string;keyConfigured:boolean;webhookConfigured:boolean;previewBaseUrl:string;commerce:Settings['commerce']}|null>(null)
  const [taxRate,setTaxRate]=useState('');const [price,setPrice]=useState('');const [base,setBase]=useState('');const [enabled,setEnabled]=useState(false);const [key,setKey]=useState('');const [webhook,setWebhook]=useState('');const [busy,setBusy]=useState(false)
- async function load(){const r=await api<NonNullable<typeof data>>('/api/billing');setData(r);setTaxRate(r.commerce.taxRateId);setPrice(r.commerce.priceCents===null?'':String(r.commerce.priceCents/100));setBase(r.base);setEnabled(r.commerce.enabled);onSaved?.(r)}
+ async function load(){const r=await api<NonNullable<typeof data>>('/api/billing');setData(r);setTaxRate(r.commerce.taxRateId);setPrice(r.commerce.priceCents===null?'':String(r.commerce.priceCents/100));setBase(r.base);setEnabled(r.commerce.enabled);onSaved?.({...r,base:r.previewBaseUrl})}
  useEffect(()=>{load().catch(e=>toast.error(e.message))},[])
  if(!data)return <p className="p-5 text-sm text-muted">Chargement du paiement…</p>
  return <Card><CardHeader title="Paiement du site" description="Un seul prix pour tous vos sites. Stripe encaisse et génère la facture après paiement."/><CardBody className="space-y-5">

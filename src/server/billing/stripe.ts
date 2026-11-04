@@ -1,5 +1,5 @@
 import Stripe from 'stripe'
-import { getSecret, getSettings } from '../core/settings'
+import { getSecret, getSettings, getPreviewBaseUrl } from '../core/settings'
 import { env } from '../core/env'
 import { AppError } from '../core/errors'
 
@@ -15,6 +15,7 @@ export function stripeUrl(value:unknown):string|null {
 }
 export async function billingSetup() {
  const [settings,key,webhook]=await Promise.all([getSettings(),getSecret('STRIPE_SECRET_KEY'),getSecret('STRIPE_WEBHOOK_SECRET')])
+ const base=await getPreviewBaseUrl(settings)
  const live=/^(sk|rk)_live_/.test(key)
  const keyOk=/^(sk|rk)_(test|live)_/.test(key)
  let reason=''
@@ -22,8 +23,8 @@ export async function billingSetup() {
  else if(!settings.commerce.priceCents)reason='Définissez le prix unique'
  else if(!keyOk)reason='Ajoutez votre clé secrète Stripe'
  else if(!webhook)reason='Ajoutez le secret du webhook Stripe'
- else {try{publicBase(live,settings.sites.previewBaseUrl||undefined)}catch(e){reason=(e as Error).message}}
- return {ready:!reason,reason,live,commerce:settings.commerce,base:settings.sites.previewBaseUrl||env().APP_BASE_URL}
+ else {try{publicBase(live,base)}catch(e){reason=(e as Error).message}}
+ return {ready:!reason,reason,live,commerce:settings.commerce,base,previewBaseUrl:settings.sites.previewBaseUrl}
 }
 export async function stripeClient() {
  const key=await getSecret('STRIPE_SECRET_KEY')

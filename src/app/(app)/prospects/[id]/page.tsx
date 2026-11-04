@@ -5,7 +5,7 @@ import { Badge, Card, CardBody, CardHeader, EmptyState, Notice, Table, Td, Th } 
 import { NextAction } from '@/components/workflow'
 import { EmailBadge, PipelineBadge, PresenceBadge, ScorePill } from '@/components/badges'
 import { getBusinessDetail } from '@/server/business/detail'
-import { getSettings } from '@/server/core/settings'
+import { getPreviewBaseUrl, getSettings } from '@/server/core/settings'
 import { previewUrl } from '@/server/proposals/service'
 import { SECTOR_BY_ID } from '@/lib/sectors'
 import { MSG_STATUS, CLASSIFICATION } from '@/lib/labels'
@@ -21,6 +21,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
   const d = await getBusinessDetail(id)
   if (!d) notFound()
   const settings = await getSettings()
+  const previewBase=await getPreviewBaseUrl(settings)
   const b = d.business as Record<string, unknown> & { id: string; name: string; sector: string | null; city: string | null; postcode: string | null; address: string | null; country: string | null; phone: string | null; email: string | null; email_status: string; website_url: string | null; web_presence_status: string; pipeline_status: string; score: number | null; data_confidence: number | null; priority: string | null; tags: string[]; siret: string | null; naf_code: string | null; lat: number | null; lon: number | null; do_not_contact: boolean; web_presence_evidence: { source: string; at: string; finding: string; live?: boolean; detail?: string }[]; merged_into: string | null; created_at: Date; enriched_at: Date | null }
   const latestScore = d.scores[0] as { score: number; confidence: number; priority: string; reasons: { label: string; points: number }[]; created_at: Date } | undefined
   return (
@@ -127,7 +128,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
                       {s.error ? <p className="text-danger">{s.error}</p> : null}
                       <div className="flex gap-3 pt-1">
                         <Link className="text-primary" href={`/sites/${s.id}`}>Éditer</Link>
-                        {s.status === 'READY' && s.preview_enabled ? <a className="text-primary" href={previewUrl(s.preview_token, settings.sites.previewBaseUrl)} target="_blank" rel="noopener noreferrer">Prévisualiser</a> : null}
+                        {s.status === 'READY' && s.preview_enabled ? <a className="text-primary" href={previewUrl(s.preview_token, previewBase)} target="_blank" rel="noopener noreferrer">Prévisualiser</a> : null}
                       </div>
                     </div>
                   </div>

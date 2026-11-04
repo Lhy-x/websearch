@@ -1,5 +1,5 @@
 import { sql } from '../core/db'
-import { env } from '../core/env'
+import { getRuntimeConfig } from '../core/settings'
 import { normalizeName } from '../core/normalize'
 import { BUILTIN_CITIES } from './cities'
 
@@ -36,11 +36,12 @@ async function apiAdresse(q: GeocodeInput): Promise<GeoPoint | null> {
 }
 
 async function nominatim(q: GeocodeInput): Promise<GeoPoint | null> {
+  const runtime=await getRuntimeConfig()
   const params = new URLSearchParams({ format: 'jsonv2', limit: '1', countrycodes: q.country.toLowerCase() })
   if (q.city) params.set('city', q.city)
   if (q.postcode) params.set('postalcode', q.postcode)
   const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-    headers: { 'user-agent': `ProspectForge/0.1 (${env().CRAWLER_CONTACT || 'private tool'})` },
+    headers: { 'user-agent': `ProspectForge/0.1 (${runtime.CRAWLER_CONTACT || 'private tool'})` },
     signal: AbortSignal.timeout(8000),
   })
   if (!res.ok) return null

@@ -74,6 +74,8 @@ Voir le [parcours simple : emails, Stripe, factures et corbeille](docs/VENTES.md
 
 Le guide intégré **Aide & prise en main** (`/guide`) explique les quatre étapes. Voir aussi la [navigation et les raccourcis de l’interface](docs/INTERFACE.md).
 
+Les clés de services et les connexions se règlent dans **Paramètres → Clés & connexions** : [mini tutos et configuration](docs/CLES-ET-CONNEXIONS.md). Pour effacer les données tout en conservant l’admin : [remise à zéro avec sauvegarde](docs/REMISE-A-ZERO.md).
+
 ## Parcours principal
 
 1. **Recherche de prospects** : pays, ville/code postal (ou coordonnées), rayon, secteur, mots-clés, filtres de présence web.

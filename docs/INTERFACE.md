@@ -38,6 +38,7 @@ Les liens suivants ouvrent directement le bon onglet :
 - `/settings?tab=ai` : fournisseur et budget IA.
 - `/settings?tab=outreach` : signature email.
 - `/settings?tab=payment` : prix, connexion Stripe et activation du bouton de commande.
+- `/settings?tab=connections` : toutes les clés de service, leurs mini tutos et les connexions SMTP / IMAP.
 
 Les modèles IA, les réglages de campagnes et les diagnostics restent accessibles dans des
 sections repliables. Les contrôles de configuration ne remplacent pas un essai réel de votre

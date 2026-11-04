@@ -1,7 +1,7 @@
 import {billingSetup} from '../billing/stripe'
 import { sql } from '../core/db'
 import { env } from '../core/env'
-import { getSettings } from '../core/settings'
+import { getPreviewBaseUrl, getSettings } from '../core/settings'
 import { aiAvailability, generateStructured } from '../ai/client'
 import { loadBusinessFacts } from '../sites/facts'
 import { buildDeterministicProposal, findProspectClaim, PROPOSAL_SYSTEM_PROMPT, proposalContentSchema, EMAIL_VARIANTS, type ProposalContent, type ProposalFacts } from './content'
@@ -18,6 +18,7 @@ export function formatPrice(cents: number | null, currency: string): string | nu
 export async function loadProposalFacts(businessId: string, websiteId?: string | null, offerId?: string | null): Promise<ProposalFacts> {
   const db = sql()
   const settings = await getSettings()
+  const base=await getPreviewBaseUrl(settings)
   const f = await loadBusinessFacts(businessId)
   const [site] = websiteId
     ? await db<{ preview_token: string; preview_enabled: boolean }[]>`select preview_token, preview_enabled from generated_websites where id = ${websiteId} and business_id = ${businessId} and deleted_at is null and status='READY' and preview_enabled and (preview_expires_at is null or preview_expires_at>now())`
@@ -33,7 +34,7 @@ export async function loadProposalFacts(businessId: string, websiteId?: string |
     websiteStatus: f.websiteStatus,
     websiteUrl: f.websiteUrl,
     auditFindings: f.auditFindings,
-    demoUrl: site?.preview_enabled ? previewUrl(site.preview_token, settings.sites.previewBaseUrl) : null,
+    demoUrl: site?.preview_enabled ? previewUrl(site.preview_token, base) : null,
     offer: billing.ready ? {name:billing.commerce.title,description:'Création du site présenté en démonstration',price:formatPrice(billing.commerce.priceCents,billing.commerce.currency.toUpperCase())} : offer ? { name: offer.name, description: offer.description, price: formatPrice(offer.price_cents, offer.currency) } : null,
     senderName: settings.outreach.senderName || 'Votre prénom',
     signature: settings.outreach.signature,

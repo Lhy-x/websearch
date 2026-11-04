@@ -2,7 +2,7 @@ import { hostname } from 'node:os'
 import { randomBytes } from 'node:crypto'
 import { sql } from '../core/db'
 import { errorMessage } from '../core/errors'
-import { getFlags, getSettings } from '../core/settings'
+import { getRuntimeConfig, getFlags, getSettings } from '../core/settings'
 import { claimJob, completeJob, failJob, heartbeat, isJobActive, jobLog, recoverStaleJobs, enqueueJob, type Job } from './queue'
 import { fireDueSchedules } from './schedules'
 import { HANDLERS, type JobType } from './handlers'
@@ -51,11 +51,13 @@ export class Worker {
   private running = new Set<Promise<unknown>>()
   private stopping = false
   private timers: NodeJS.Timeout[] = []
+  private configuredConcurrency=env().WORKER_CONCURRENCY
 
   constructor(private opts: RunnerOptions = {}) {}
 
   async start() {
     const db = sql()
+    this.configuredConcurrency=(await getRuntimeConfig()).WORKER_CONCURRENCY
     await db`insert into worker_heartbeats (worker_id, hostname, pid, info) values (${this.id}, ${hostname()}, ${process.pid}, ${db.json({ concurrency: this.concurrency() })})
              on conflict (worker_id) do update set last_seen_at = now()`
     const every = (ms: number, fn: () => Promise<unknown>) => {
@@ -75,7 +77,7 @@ export class Worker {
       if ((await getFlags()).globalPause) return
       const minute = new Date().toISOString().slice(0, 16)
       await enqueueJob('campaign.tick', {}, { priority: 10, idempotencyKey: `campaign.tick:${minute}`, maxAttempts: 1 })
-      if (env().IMAP_HOST && Number(minute.slice(-2)) % 5 === 0) await enqueueJob('inbox.sync', {}, { priority: 20, idempotencyKey: `inbox.sync:${minute}`, maxAttempts: 2 })
+      if ((await getRuntimeConfig()).IMAP_HOST && Number(minute.slice(-2)) % 5 === 0) await enqueueJob('inbox.sync', {}, { priority: 20, idempotencyKey: `inbox.sync:${minute}`, maxAttempts: 2 })
       if (minute.endsWith('03:17')) await enqueueJob('maintenance.cleanup', {}, { idempotencyKey: `cleanup:${minute.slice(0, 10)}` })
     })
     console.log(`[worker] ${this.id} démarré (concurrence ${this.concurrency()})`)
@@ -83,13 +85,15 @@ export class Worker {
   }
 
   private concurrency() {
-    return this.opts.concurrency ?? env().WORKER_CONCURRENCY
+    return this.opts.concurrency ?? this.configuredConcurrency
   }
 
   private async loop() {
     while (!this.stopping) {
       const flags = await getFlags().catch(() => ({ globalPause: false, emergencyStop: false }))
-      const limit = Math.min(this.concurrency(), (await getSettings().catch(() => null))?.automation.maxConcurrentJobs ?? this.concurrency())
+      const settings=await getSettings().catch(()=>null)
+      if(settings)this.configuredConcurrency=(await getRuntimeConfig(settings)).WORKER_CONCURRENCY
+      const limit = Math.min(this.concurrency(),settings?.automation.maxConcurrentJobs??this.concurrency())
       if (flags.globalPause || this.running.size >= limit) {
         await sleep(this.opts.pollMs ?? 1000)
         continue

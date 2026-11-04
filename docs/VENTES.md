@@ -6,7 +6,7 @@ accessibles dans « Options avancées ».
 
 ## Démos et emails
 
-Dans **Démos**, chaque site propose son aperçu, la copie du lien, **Préparer l’email** et
+Dans **Mes démos**, chaque site propose son aperçu, la copie du lien, **Préparer l’email** et
 **Supprimer**. L’email est un brouillon modifiable, avec destinataire, objet et texte.
 Le bouton de rédaction utilise le worker. Si Stripe est activé et configuré, le prix unique
 et un lien de commande sont ajoutés côté serveur à chaque variante : le modèle ne choisit
@@ -25,7 +25,7 @@ Dans **Paramètres → Paiement**, définir :
 
 Commencer avec une clé `sk_test_…`. Les secrets sont saisis dans l’application ou dans `.env`
 (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`), jamais dans le code ou le navigateur public.
-Les champs vides conservent les clés déjà enregistrées. L’état affiché décrit la configuration,
+Les champs vides conservent les clés déjà enregistrées. Les valeurs enregistrées sur le site sont prioritaires sur .env ; « Clés & connexions → Utiliser .env » rétablit une clé du fichier. L’état affiché décrit la configuration,
 pas une garantie d’acceptation du compte Stripe.
 
 Le bouton de démo ouvre une page de commande puis **Stripe Checkout**. Le montant vient du

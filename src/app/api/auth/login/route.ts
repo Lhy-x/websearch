@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { sql } from '@/server/core/db'
 import { env } from '@/server/core/env'
+import { getRuntimeConfig } from '@/server/core/settings'
 import { verifyPassword } from '@/server/core/crypto'
 import { SESSION_COOKIE, SESSION_TTL_S, signSession } from '@/lib/session'
 import { auditLog } from '@/server/core/audit'
@@ -21,9 +22,10 @@ export async function POST(req: Request) {
     : NextResponse.json({error},{status})
   try {
     const e=env()
+    const runtime=await getRuntimeConfig()
     // Native forms can submit before hydration; permit same-origin only, never credentials in a GET URL.
     const origin=req.headers.get('origin')
-    if(native && (req.headers.get('sec-fetch-site')==='cross-site' || (origin && origin!==new URL(req.url).origin && origin!==new URL(e.APP_BASE_URL).origin))) {
+    if(native && (req.headers.get('sec-fetch-site')==='cross-site' || (origin && origin!==new URL(req.url).origin && origin!==new URL(runtime.APP_BASE_URL).origin))) {
       return NextResponse.json({error:'Origine de connexion non autorisée'},{status:403})
     }
     const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0]!.trim() || 'local'
@@ -43,7 +45,7 @@ export async function POST(req: Request) {
     }
     await auditLog({ action: 'auth.login', actor: email, data: { ip } })
     const res = native?NextResponse.redirect(new URL(localPath(next),req.url),303):NextResponse.json({ ok: true })
-    res.cookies.set(SESSION_COOKIE, await signSession(e.ADMIN_EMAIL), { httpOnly: true, sameSite: 'lax', secure: e.APP_BASE_URL.startsWith('https'), path: '/', maxAge: SESSION_TTL_S })
+    res.cookies.set(SESSION_COOKIE, await signSession(e.ADMIN_EMAIL), { httpOnly: true, sameSite: 'lax', secure: new URL(req.url).protocol==='https:' || (req.headers.get('x-forwarded-proto')??'').split(',')[0]?.trim()==='https', path: '/', maxAge: SESSION_TTL_S })
     return res
   } catch (err) {
     return jsonError(err)

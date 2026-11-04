@@ -1,8 +1,7 @@
 import { randomUUID, createHmac, timingSafeEqual } from 'node:crypto'
 import nodemailer from 'nodemailer'
-import { env } from '../core/env'
 import { NotConfiguredError, TransientError } from '../core/errors'
-import { getSecret } from '../core/settings'
+import { getRuntimeConfig, getSecret } from '../core/settings'
 
 export interface OutgoingEmail {
   from: string
@@ -72,7 +71,7 @@ export function smtpProvider(opts: { host: string; port: number; secure: boolean
 }
 
 export async function getEmailProvider(): Promise<EmailProvider> {
-  const e = env()
+  const e = await getRuntimeConfig()
   if (e.EMAIL_PROVIDER === 'resend') {
     const key = await getSecret('RESEND_API_KEY')
     if (!key) throw new NotConfiguredError('Resend', 'RESEND_API_KEY manquante')
@@ -80,7 +79,7 @@ export async function getEmailProvider(): Promise<EmailProvider> {
   }
   if (e.EMAIL_PROVIDER === 'smtp') {
     if (!e.SMTP_HOST) throw new NotConfiguredError('SMTP', 'SMTP_HOST manquant')
-    return smtpProvider({ host: e.SMTP_HOST, port: e.SMTP_PORT, secure: e.SMTP_SECURE === 'true', user: e.SMTP_USER, pass: await getSecret('SMTP_PASSWORD') })
+    return smtpProvider({ host: e.SMTP_HOST, port: e.SMTP_PORT, secure: e.SMTP_SECURE, user: e.SMTP_USER, pass: await getSecret('SMTP_PASSWORD') })
   }
   return sandboxProvider
 }

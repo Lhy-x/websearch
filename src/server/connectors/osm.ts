@@ -1,6 +1,5 @@
-import { env } from '../core/env'
 import { TransientError } from '../core/errors'
-import { getSettings } from '../core/settings'
+import { getRuntimeConfig, getSettings } from '../core/settings'
 import { SECTOR_BY_ID, SECTORS } from '@/lib/sectors'
 import type { Connector, RawPlace, SearchQuery } from './types'
 
@@ -68,14 +67,16 @@ export const osmConnector: Connector = {
   label: 'OpenStreetMap (Overpass)',
   async status() {
     const s = await getSettings()
-    return { configured: !!env().OVERPASS_URL, enabled: s.search.sources.osm, message: `Endpoint : ${env().OVERPASS_URL}` }
+    const runtime=await getRuntimeConfig(s)
+    return { configured: !!runtime.OVERPASS_URL, enabled: s.search.sources.osm, message: `Endpoint : ${runtime.OVERPASS_URL}` }
   },
   async search(q, log) {
+    const runtime=await getRuntimeConfig()
     const body = new URLSearchParams({ data: buildOverpassQuery(q) })
-    const res = await fetch(env().OVERPASS_URL, {
+    const res = await fetch(runtime.OVERPASS_URL, {
       method: 'POST',
       body,
-      headers: { 'user-agent': `ProspectForge/0.1 (${env().CRAWLER_CONTACT || 'private tool'})` },
+      headers: { 'user-agent': `ProspectForge/0.1 (${runtime.CRAWLER_CONTACT || 'private tool'})` },
       signal: AbortSignal.timeout(90_000),
     })
     if (res.status === 429 || res.status === 504) throw new TransientError(`Overpass HTTP ${res.status}`, 120_000)

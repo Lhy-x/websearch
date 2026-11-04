@@ -1,9 +1,9 @@
 import { sql } from './core/db'
 import { TEMPLATES } from '@/lib/site/templates'
+import type postgres from 'postgres'
 
 /** Idempotent seed of reference data (templates registry, default offer & strategy). */
-export async function seedDefaults() {
-  const db = sql()
+export async function seedDefaults(db:ReturnType<typeof sql>|postgres.TransactionSql=sql()) {
   for (const t of TEMPLATES) {
     await db`insert into website_templates (id, name, sector, layout, description) values (${t.id}, ${t.name}, ${t.sector}, ${t.layout}, ${t.description})
              on conflict (id) do update set name = excluded.name, sector = excluded.sector, layout = excluded.layout, description = excluded.description`
@@ -12,7 +12,7 @@ export async function seedDefaults() {
   const [{ n } = { n: 0 }] = await db<{ n: number }[]>`select count(*)::int as n from sales_offers`
   if (n === 0) {
     await db`insert into sales_offers (name, kind, description, price_cents) values
-      ('Site vitrine', 'vitrine', 'Site vitrine responsive (5 sections), nom de domaine et hébergement la première année, mise en ligne sous 10 jours.', null),
+      ('Site vitrine', 'vitrine', 'Site vitrine responsive personnalisé. Périmètre, délais, domaine et hébergement à convenir avec le client.', null),
       ('Refonte de site', 'refonte', 'Refonte complète du site existant : design moderne, mobile, vitesse et référencement de base.', null),
       ('Site + maintenance', 'maintenance', 'Site vitrine + maintenance mensuelle (mises à jour, sauvegardes, petites modifications).', null),
       ('Site + SEO local', 'seo_local', 'Site vitrine + optimisation du référencement local (fiche d’établissement, pages locales).', null),

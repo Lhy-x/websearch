@@ -25,7 +25,7 @@ export function GeneratorClient({ candidates, preselect, jobs, availability }: {
   const job = progress.data?.job
   const creating = busy || !!jobId && (!job || ACTIVE.includes(job.status))
   useEffect(() => { if (job?.status === 'COMPLETED' && job.result?.websiteId) { toast.success('Votre site est prêt à découvrir.'); router.push(`/sites/${job.result.websiteId}`) } }, [job, router])
-  useEffect(() => { if (jobs.some(j => ACTIVE.includes(j.status))) { const timer = setTimeout(() => router.refresh(), 4000); return () => clearTimeout(timer) } }, [jobs, router])
+  useEffect(() => { if (!jobs.some(j => ACTIVE.includes(j.status))) return; const refresh=()=>{if(document.visibilityState==='visible')router.refresh()};const timer=setInterval(refresh,4000);document.addEventListener('visibilitychange',refresh);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',refresh)} }, [jobs, router])
   const prospect = candidates.find(c => c.id === selected)
   const visible = candidates.filter(c => `${c.name} ${c.city ?? ''}`.toLowerCase().includes(q.toLowerCase()))
   async function generate() {

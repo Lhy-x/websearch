@@ -75,7 +75,7 @@ export async function sendOutbound(messageId: string, provider?: EmailProvider):
       messageId: m.message_id_header,
       idempotencyKey: m.idempotency_key,
       headers: {
-        'List-Unsubscribe': `<${unsubscribeUrl(m.unsubscribe_token)}>`,
+        'List-Unsubscribe': `<${await unsubscribeUrl(m.unsubscribe_token)}>`,
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
         'X-PF-Message': m.id,
         ...(m.in_reply_to ? { 'In-Reply-To': m.in_reply_to, References: m.references_header ?? m.in_reply_to } : {}),

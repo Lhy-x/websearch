@@ -1,19 +1,18 @@
 import { ImapFlow } from 'imapflow'
 import { simpleParser } from 'mailparser'
 import { sql } from '../core/db'
-import { env } from '../core/env'
 import { NotConfiguredError } from '../core/errors'
-import { getSecret } from '../core/settings'
+import { getRuntimeConfig, getSecret } from '../core/settings'
 import { processInbound } from './inbound'
 
 /** Poll the IMAP inbox for new messages since the last processed UID. */
 export async function syncImap(log: (m: string) => Promise<void> | void = () => {}): Promise<{ fetched: number; processed: number }> {
-  const e = env()
+  const e = await getRuntimeConfig()
   const password = await getSecret('IMAP_PASSWORD')
   if (!e.IMAP_HOST || !e.IMAP_USER || !password) throw new NotConfiguredError('IMAP', 'IMAP_HOST / IMAP_USER / IMAP_PASSWORD requis')
   const db = sql()
   const [cursor] = await db<{ value: { uid: number; uidValidity: string } }[]>`select value from kv_store where key = 'imap:inbox'`
-  const client = new ImapFlow({ host: e.IMAP_HOST, port: e.IMAP_PORT, secure: e.IMAP_PORT === 993, auth: { user: e.IMAP_USER, pass: password }, logger: false })
+  const client = new ImapFlow({ host: e.IMAP_HOST, port: e.IMAP_PORT, secure: e.IMAP_SECURE, auth: { user: e.IMAP_USER, pass: password }, logger: false })
   await client.connect()
   let fetched = 0
   let processed = 0

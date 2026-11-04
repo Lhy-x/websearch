@@ -1,7 +1,7 @@
 import {SiteActions} from '@/components/site-actions'
 import { notFound } from 'next/navigation'
 import { sql } from '@/server/core/db'
-import { getSettings } from '@/server/core/settings'
+import { getPreviewBaseUrl, getSettings } from '@/server/core/settings'
 import { getWebsiteVersion } from '@/server/sites/service'
 import { previewUrl } from '@/server/proposals/service'
 import { Editor } from './editor'
@@ -21,7 +21,8 @@ export default async function SiteEditorPage({ params }: { params: Promise<{ id:
   const versions = await db<{ version: number; created_by: string; note: string | null; created_at: Date }[]>`select version, created_by, note, created_at from website_versions where website_id = ${id} order by version desc`
   const shots = await db<{ kind: string; path: string; version: number }[]>`select kind, path, version from website_assets where website_id = ${id} and kind like 'screenshot%' order by created_at desc limit 6`
   const settings = await getSettings()
-  const siteProps = { ...site, preview_expires_at: site.preview_expires_at?.toISOString() ?? null, previewUrl: previewUrl(site.preview_token, settings.sites.previewBaseUrl) }
+  const previewBase=await getPreviewBaseUrl(settings)
+  const siteProps = { ...site, preview_expires_at: site.preview_expires_at?.toISOString() ?? null, previewUrl: previewUrl(site.preview_token, previewBase) }
   const versionList = versions.map((x) => ({ ...x, created_at: x.created_at.toISOString() }))
   const shareActions=<div className="rounded-2xl border border-border bg-panel px-5 py-2"><SiteActions id={id} businessId={site.business_id} name={site.business_name} demoUrl={siteProps.previewUrl} active={site.status==='READY'&&site.preview_enabled&&(!site.preview_expires_at||site.preview_expires_at>new Date())}/></div>
   if (v && isHtmlSite(v.config)) return <><HtmlEditor shareActions={shareActions} site={siteProps} initial={{ version: v.version, config: v.config }} versions={versionList} shots={shots} /></>

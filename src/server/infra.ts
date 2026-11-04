@@ -1,7 +1,7 @@
 import { statfs, readdir, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { sql } from './core/db'
-import { env } from './core/env'
+import { getRuntimeConfig, getSecret } from './core/settings'
 import { storageRoot } from './core/storage'
 import { CONNECTORS } from './connectors'
 import { aiAvailability } from './ai/client'
@@ -19,6 +19,9 @@ async function dirSize(dir: string, depth = 0): Promise<number> {
   }
   return total
 }
+
+const sizeCache=new Map<string,{at:number;value:Promise<number>}>()
+function cachedDirSize(root:string){const hit=sizeCache.get(root);if(hit&&Date.now()-hit.at<30000)return hit.value;const value=dirSize(root);sizeCache.set(root,{at:Date.now(),value});return value}
 
 export async function infraStatus() {
   const db = sql()
@@ -39,15 +42,15 @@ export async function infraStatus() {
     disk = null
   }
   const connectors = await Promise.all(CONNECTORS.map(async (c) => ({ id: c.id, label: c.label, ...(await c.status()) })))
-  const e = env()
+  const [e,webhook]=await Promise.all([getRuntimeConfig(),getSecret('INBOUND_WEBHOOK_SECRET')])
   return {
     postgres,
     queue: 'PostgreSQL (SELECT … FOR UPDATE SKIP LOCKED) — Redis non requis',
     workers: workers.map((w) => ({ id: w.worker_id, online: Date.now() - w.last_seen_at.getTime() < 60_000, lastSeen: w.last_seen_at })),
-    storage: { root: storageRoot(), usedBytes: await dirSize(storageRoot()), disk },
+    storage: { root: storageRoot(), usedBytes: await cachedDirSize(storageRoot()), disk },
     backup: backup?.value ?? null,
     connectors,
     ai: await aiAvailability(),
-    email: { provider: e.EMAIL_PROVIDER, inbound: { imap: !!e.IMAP_HOST, webhook: !!e.INBOUND_WEBHOOK_SECRET } },
+    email: { provider: e.EMAIL_PROVIDER, inbound: { imap: !!e.IMAP_HOST, webhook: !!webhook } },
   }
 }

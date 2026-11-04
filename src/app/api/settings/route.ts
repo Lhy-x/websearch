@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { sql } from '@/server/core/db'
 import { auditLog } from '@/server/core/audit'
 import { AppError } from '@/server/core/errors'
-import { SECRET_KEYS, getSettings, secretStatus, setSecret, updateSettings } from '@/server/core/settings'
+import { SECRET_KEYS, getSettings, inheritSecret, secretStatus, setSecret, updateSettings } from '@/server/core/settings'
 import { adminRoute } from '@/server/http/route'
 import { sendTestEmail } from '@/server/email/test-send'
 import { suppress } from '@/server/email/suppression'
@@ -21,6 +21,7 @@ export const PUT = adminRoute(async ({ req, admin }) => {
 
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('secret'), key: z.enum(SECRET_KEYS), value: z.string().max(500).nullable() }),
+  z.object({ action: z.literal('secret_inherit'), key: z.enum(SECRET_KEYS) }),
   z.object({ action: z.literal('offer_save'), id: z.string().uuid().optional(), name: z.string().min(1).max(120), kind: z.enum(['vitrine', 'refonte', 'maintenance', 'seo_local', 'booking', 'custom']), description: z.string().max(2000), priceCents: z.number().int().min(0).nullable(), active: z.boolean().default(true) }),
   z.object({ action: z.literal('strategy_save'), id: z.string().uuid().optional(), name: z.string().min(1).max(120), instructions: z.string().min(1).max(4000), tone: z.string().max(60), isDefault: z.boolean().default(false) }),
   z.object({ action: z.literal('strategy_delete'), id: z.string().uuid() }),
@@ -39,6 +40,10 @@ export const POST = adminRoute(async ({ body, admin }) => {
       await setSecret(body.key, body.value)
       await auditLog({ action: 'settings.secret', actor: admin.email, data: { key: body.key, set: !!body.value } })
       return { ok: true }
+    case 'secret_inherit':
+      await inheritSecret(body.key)
+      await auditLog({action:'settings.secret_inherit',actor:admin.email,data:{key:body.key}})
+      return {ok:true}
     case 'offer_save':
       if (body.id) await db`update sales_offers set name = ${body.name}, kind = ${body.kind}, description = ${body.description}, price_cents = ${body.priceCents}, active = ${body.active} where id = ${body.id}`
       else await db`insert into sales_offers (name, kind, description, price_cents, active) values (${body.name}, ${body.kind}, ${body.description}, ${body.priceCents}, ${body.active})`

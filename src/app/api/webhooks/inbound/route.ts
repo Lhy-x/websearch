@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { timingSafeEqual } from 'node:crypto'
 import { z } from 'zod'
-import { env } from '@/server/core/env'
+import { getSecret } from '@/server/core/settings'
 import { processInbound } from '@/server/email/inbound'
 
 const schema = z.object({
@@ -20,7 +20,7 @@ const schema = z.object({
  * routes via a small adapter, or a test). Auth: `Authorization: Bearer <INBOUND_WEBHOOK_SECRET>`.
  */
 export async function POST(req: Request) {
-  const secret = env().INBOUND_WEBHOOK_SECRET
+  const secret = await getSecret('INBOUND_WEBHOOK_SECRET')
   if (!secret) return NextResponse.json({ error: 'INBOUND_WEBHOOK_SECRET non configuré' }, { status: 503 })
   const got = Buffer.from((req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, ''))
   const exp = Buffer.from(secret)

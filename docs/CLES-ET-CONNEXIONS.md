@@ -21,6 +21,8 @@ en base avec la clé de chiffrement locale.
 4. Les brouillons d’email peuvent être préparés sans service d’envoi. Pour les campagnes,
    configurer Resend ou SMTP, puis l’expéditeur et la signature dans **Mes emails**.
 5. Pour vendre : définir un prix et configurer Stripe dans **Paiement**. Commencer en test.
+   **Générer et démarrer** lance le relais local et enregistre son secret automatiquement ;
+   installer le CLI Stripe une fois sur le Mac est le seul prérequis supplémentaire.
    Le détail des webhooks, factures et téléchargements est dans [VENTES.md](VENTES.md).
 
 ## Les clés disponibles

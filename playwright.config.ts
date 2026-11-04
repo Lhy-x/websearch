@@ -1,5 +1,13 @@
 import { defineConfig } from '@playwright/test'
 import { randomBytes, scryptSync } from 'node:crypto'
+import { mkdirSync, copyFileSync, chmodSync } from 'node:fs'
+import path from 'node:path'
+
+// The browser tests manage an offline CLI process, never a real Stripe account.
+const stripeFixtureDir = path.resolve('storage-e2e/test-tools')
+mkdirSync(stripeFixtureDir, { recursive: true })
+copyFileSync('tests/fixtures/stripe-cli.cjs', path.join(stripeFixtureDir, 'stripe'))
+chmodSync(path.join(stripeFixtureDir, 'stripe'), 0o700)
 
 export const E2E_PASSWORD = 'e2e-password-123'
 const salt = randomBytes(16)
@@ -21,6 +29,8 @@ const env = {
   SESSION_SECRET: 'e2e-session-secret-0123456789abcdefghij',
   APP_ENCRYPTION_KEY: 'e2e-encryption-key-0123456789abcdef',
   NEXT_DIST_DIR: '.next-e2e',
+  PATH: `${stripeFixtureDir}${path.delimiter}${process.env.PATH ?? ''}`,
+  PF_STRIPE_FIXTURE_MODE: 'ready',
 } as Record<string, string>
 
 export default defineConfig({

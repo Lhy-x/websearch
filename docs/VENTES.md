@@ -60,15 +60,38 @@ marquées et exclues du chiffre d’affaires réel.
 ### Tester sur son Mac
 
 Un site `localhost` n’est pas accessible à un prospect ou au webhook Stripe distant.
-En test, installer et connecter le CLI officiel Stripe selon https://docs.stripe.com/stripe-cli,
-puis lancer dans un autre terminal :
+Dans **Paramètres → Paiement → Webhook de test en un clic** :
+
+1. Installer une seule fois le CLI officiel sur le Mac :
+
+   ```sh
+   brew install stripe/stripe-cli/stripe
+   ```
+
+2. Coller la clé secrète de **test** `sk_test_…` dans le champ Stripe, ou conserver celle déjà enregistrée.
+3. Cliquer sur **Générer et démarrer**. Le relais démarre et son secret `whsec_…` est enregistré
+   automatiquement avec la clé de test, chiffré en base. Les champs restent masqués et vides : rien à copier.
+   Il n’est pas nécessaire de lancer `stripe login` ni un second terminal.
+4. Définir le prix, conserver une adresse locale pour ses essais, activer le paiement et enregistrer.
+   Utiliser ensuite les moyens de paiement de test documentés par Stripe.
+5. Cliquer sur **Arrêter** après les essais. Cela arrête le processus, sans supprimer les clés enregistrées.
+
+Le bouton refuse les clés réelles et ne déclenche pas de paiement. Le relais utilise le port de
+l’application et tourne sur **la machine qui héberge le serveur**, pas nécessairement celle du navigateur.
+Laisser l’application ouverte. Fermer le serveur arrête le relais ; après un redémarrage, il faut le
+relancer depuis le bouton. La recharge d’une page conserve son état. Cette fonction nécessite un serveur
+Node persistant ; elle n’est pas adaptée aux hébergements serverless.
+
+Pour un usage manuel, la commande du CLI reste disponible :
 
 ```sh
 stripe listen --forward-to localhost:3000/api/webhooks/stripe
 ```
 
-Copier le secret `whsec_…` affiché par ce listener dans Paramètres → Paiement. Utiliser ensuite
-les moyens de paiement de test documentés par Stripe. Garder le listener et l’application ouverts.
+Dans ce mode manuel seulement, copier le secret `whsec_…` affiché dans Paramètres → Paiement.
+Ne pas lancer deux relais simultanément pour le même webhook. Le démarrage automatique remplace les
+clés Stripe enregistrées par celles de son mode test ; après arrêt, enregistrer à nouveau les clés
+d’un webhook permanent si nécessaire.
 Les tests automatiques du dépôt simulent Checkout et envoient des événements signés ; ils ne
 font pas de débit externe et ne valident pas votre compte Stripe réel.
 

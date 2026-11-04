@@ -4,6 +4,7 @@ import { runtimeOverridesSchema, runtimeValuesSchema, type RuntimeConfig } from 
 import { sql } from './db'
 import { decryptSecret, encryptSecret } from './crypto'
 import { env } from './env'
+import { AppError } from './errors'
 
 export const COST_MODES = ['LOW_COST', 'BALANCED', 'HIGH_QUALITY'] as const
 export const SITE_STYLES = ['minimaliste', 'premium', 'moderne', 'editorial', 'institutionnel', 'creatif', 'artisanal', 'elegant', 'haut_de_gamme'] as const
@@ -26,6 +27,8 @@ export const scoringWeightsSchema = z.object({
 export const settingsSchema = z.object({
   workspaceEpoch:z.string().max(100).default('initial'),
   runtime: runtimeOverridesSchema.prefault({}),
+  launch:z.object({mode:z.enum(['test','live']).default('test')}).prefault({}),
+  hosting:z.object({enabled:z.boolean().default(false),monthlyPriceCents:z.number().int().min(50).max(1000000).nullable().default(null),currency:z.enum(['eur','chf','usd']).default('eur'),title:z.string().trim().min(1).max(120).default('Hébergement et mise en ligne du site'),host:z.string().trim().max(253).default(''),username:z.string().trim().max(32).default(''),remoteBase:z.string().trim().max(200).default('/public_html'),publicBaseUrl:z.string().trim().max(500).default(''),serverIp:z.string().trim().max(45).default('')}).prefault({}),
   commerce: z.object({taxRateId:z.string().regex(/^$|^txr_[A-Za-z0-9]+$/).default(''),enabled:z.boolean().default(false),priceCents:z.number().int().min(50).max(10000000).nullable().default(null),currency:z.enum(['eur','chf','usd']).default('eur'),title:z.string().trim().min(1).max(120).default('Création de votre site internet')}).prefault({}),
   ai: z
     .object({
@@ -107,11 +110,15 @@ export const SECRET_KEYS = [
   'INSEE_SIRENE_API_KEY',
   'STRIPE_SECRET_KEY',
   'STRIPE_WEBHOOK_SECRET',
+  'STRIPE_TEST_SECRET_KEY',
+  'STRIPE_TEST_WEBHOOK_SECRET',
   'RESEND_API_KEY',
   'RESEND_WEBHOOK_SECRET',
   'SMTP_PASSWORD',
   'IMAP_PASSWORD',
   'INBOUND_WEBHOOK_SECRET',
+  'O2SWITCH_FTP_PASSWORD',
+  'O2SWITCH_CPANEL_TOKEN',
 ] as const
 export type SecretKey = (typeof SECRET_KEYS)[number]
 
@@ -137,9 +144,10 @@ export async function getPreviewBaseUrl(settings?:Settings) {
   return s.sites.previewBaseUrl||(await getRuntimeConfig(s)).APP_BASE_URL
 }
 
-export async function updateSettings(patch: unknown): Promise<Settings> {
+export async function updateSettings(patch: unknown, options:{allowModeChange?:boolean}={}): Promise<Settings> {
   const current = await getSettings()
   const merged = settingsSchema.parse(deepMerge(current, patch))
+  if(merged.launch.mode!==current.launch.mode&&!options.allowModeChange)throw new AppError('Utilisez le bouton Mode test / Production pour changer le mode de lancement.',400)
   await sql()`update admin_settings set data = ${sql().json(merged as never)}, updated_at = now() where id = 1`
   return merged
 }

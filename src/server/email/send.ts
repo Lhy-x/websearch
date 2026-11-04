@@ -81,9 +81,9 @@ export async function sendOutbound(messageId: string, provider?: EmailProvider):
         ...(m.in_reply_to ? { 'In-Reply-To': m.in_reply_to, References: m.references_header ?? m.in_reply_to } : {}),
       },
     })
-    await db`update outbound_messages set status = 'SENT', sent_at = now(), provider = ${r.provider}, provider_message_id = ${r.providerMessageId}, last_error = null where id = ${m.id}`
+    await db`update outbound_messages set status = 'SENT', sent_at = now(), provider = ${r.provider}, provider_message_id = ${r.providerMessageId},is_test=is_test or ${r.provider==='sandbox'}, last_error = null where id = ${m.id}`
     await db`insert into email_events (outbound_message_id, provider, provider_event_id, type, payload) values (${m.id}, ${r.provider}, ${'local-sent-' + m.id}, 'sent', '{}'::jsonb) on conflict do nothing`
-    if (m.business_id && !m.is_test)
+    if (m.business_id && !m.is_test&&r.provider!=='sandbox')
       await db`update businesses set pipeline_status = 'CONTACTED' where id = ${m.business_id} and pipeline_status in ('NEW','DISCOVERED','ENRICHED','QUALIFIED','WEBSITE_GENERATED')`
     if (m.campaign_prospect_id) await advanceSequence(m.campaign_prospect_id)
     return { outcome: 'SENT' }

@@ -9,7 +9,7 @@ import { encryptSecret } from '../core/crypto'
 import { sql } from '../core/db'
 
 async function saveTestKeys(apiKey: string, webhookSecret: string) {
-  const secrets = { STRIPE_SECRET_KEY: encryptSecret(apiKey), STRIPE_WEBHOOK_SECRET: encryptSecret(webhookSecret) }
+  const secrets = { STRIPE_TEST_SECRET_KEY:encryptSecret(apiKey),STRIPE_TEST_WEBHOOK_SECRET:encryptSecret(webhookSecret) }
   await sql()`update admin_settings set secrets=secrets || ${sql().json(secrets)},updated_at=now() where id=1`
 }
 

@@ -17,6 +17,7 @@ import { flagStuckSending, sendOutbound } from '../email/send'
 import { syncImap } from '../email/imap'
 import { enqueueJob, type Job } from './queue'
 import { runBackup } from './backup'
+import { reconcileHosting,checkHostingDomain,sweepHosting } from '../hosting/service'
 import { getObject } from '../core/storage'
 import { importCommitSchema, mapImportRows, parseImportFile } from '../connectors/import'
 import { clusterRecords } from '../search/dedup'
@@ -33,6 +34,9 @@ type Handler = (payload: unknown, ctx: JobContext) => Promise<unknown>
 const uuid = z.string().uuid()
 
 export const JOB_TYPES = {
+  'hosting.reconcile':'Publication / suspension d’un site client',
+  'hosting.domain_check':'Vérification du domaine client',
+  'hosting.sweep':'Vérification des abonnements',
   'search.run': 'Recherche de prospects',
   'business.enrich': 'Enrichissement',
   'business.audit': 'Audit de site',
@@ -51,6 +55,9 @@ export const JOB_TYPES = {
 export type JobType = keyof typeof JOB_TYPES
 
 export const HANDLERS: Record<JobType, Handler> = {
+  async 'hosting.reconcile'(p,ctx){const {orderId}=z.object({orderId:uuid}).parse(p);return reconcileHosting(orderId,(message,progress)=>ctx.log(message,progress))},
+  async 'hosting.domain_check'(p){const {orderId,domain}=z.object({orderId:uuid,domain:z.string().max(253)}).parse(p);return checkHostingDomain(orderId,domain)},
+  async 'hosting.sweep'(){return sweepHosting()},
   async 'search.run'(p, ctx) {
     const input = z.object({ runId: uuid.optional(), savedSearchId: uuid.optional(), scheduleId: uuid.optional(), params: z.unknown().optional(), autoEnrich: z.boolean().default(true) }).parse(p)
     const db = sql()
@@ -138,10 +145,10 @@ export const HANDLERS: Record<JobType, Handler> = {
     let r: { websiteId: string; version: number }
     if (mode === 'personalized') {
       await ctx.log('Conception personnalisée à partir du skill Premium 3D Glass : direction artistique, silhouette originale et site unique.')
-      r = await generateBespokeWebsite(input.businessId,{personalized:true,jobId:ctx.job.id,log:m=>ctx.log(m)})
+      r = await generateBespokeWebsite(input.businessId,{personalized:true,jobId:ctx.job.id,log:(m,progress)=>ctx.log(m,progress)})
     } else if (mode === 'bespoke') {
       try {
-        r = await generateBespokeWebsite(input.businessId, { styleHint: input.style, jobId: ctx.job.id, log: (m) => ctx.log(m) })
+        r = await generateBespokeWebsite(input.businessId, { styleHint: input.style, jobId: ctx.job.id, log: (m,progress) => ctx.log(m,progress) })
       } catch (e) {
         // explicit "bespoke" requests fail loudly; "auto" falls back to a template site and says why
         if (input.generator === 'bespoke' || !(e instanceof AppError)) throw e

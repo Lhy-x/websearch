@@ -6,6 +6,9 @@ import { useTheme } from 'next-themes'
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { WorkflowSteps } from './workflow'
+import { GenerationActivity } from './generation-batch'
+import { LaunchModeBanner } from './launch-mode'
+import { WorkspaceLevel } from './workspace-progress'
 
 const PRIMARY = [
   { href: '/', label: 'Vue d’ensemble', icon: LayoutGrid },
@@ -70,6 +73,7 @@ export function Shell({ children, flags, unread }: { children: React.ReactNode; 
   const isActive = (href: string) => href === '/' ? path === '/' : path.startsWith(href) || (href === '/prospects' && path === '/search') || (href === '/sites' && path === '/generator')
   const sidebar = (isMobile = false) => <>
     <Link href="/" className="app-brand"><span className="brand-symbol"><Layers2 size={22}/></span><span>Prospect<span className="font-normal">Forge</span><small>Votre atelier commercial</small></span></Link>
+    <WorkspaceLevel/>
     <div className="nav-section-label">MON ESPACE</div>
     <nav aria-label={isMobile ? 'Navigation mobile' : 'Navigation principale'} className="space-y-1">
       {PRIMARY.map(n => <Link key={n.href} href={n.href} aria-current={isActive(n.href) ? 'page' : undefined} className={cn('app-nav-link', isActive(n.href) && 'is-active')}><n.icon size={19}/><span>{n.label}</span>{isActive(n.href) ? <span className="nav-active-dot"/> : null}</Link>)}
@@ -93,6 +97,8 @@ export function Shell({ children, flags, unread }: { children: React.ReactNode; 
         <form role="search" className="global-search" onSubmit={e => { e.preventDefault(); if (q.trim()) router.push(`/prospects?q=${encodeURIComponent(q.trim())}`) }}><Search size={18}/><input ref={search} value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher un prospect…" aria-label="Recherche globale"/><kbd>⌘ K</kbd></form>
         <div className="header-actions"><Link href="/inbox" className="header-icon inbox-shortcut" aria-label={unread ? `Boîte de réception, ${unread} non lus` : 'Boîte de réception'}><Inbox size={19}/>{unread ? <span className="unread-dot"/> : null}</Link><button className="header-icon" aria-label="Changer de thème" onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>{mounted && resolvedTheme === 'dark' ? <Sun size={19}/> : <Moon size={19}/>}</button><Link href="/settings" className="account-avatar" aria-label="Ouvrir les paramètres">PF</Link></div>
       </header>
+      <GenerationActivity/>
+      <LaunchModeBanner/>
       {flags.emergencyStop || flags.globalPause ? <div className={cn('system-banner', flags.emergencyStop && 'text-danger')}><span>{flags.emergencyStop ? <ShieldAlert size={16}/> : <Pause size={16}/>}</span><p>{flags.emergencyStop ? 'Les envois sont arrêtés.' : 'Les automatisations sont en pause.'}</p><Link href="/automations">Gérer <ArrowUpRight size={14}/></Link></div> : null}
       <main id="main-content" tabIndex={-1} className="app-main"><div key={path} className="route-surface">{stage ? <WorkflowSteps current={stage}/> : null}{children}</div></main>
       <footer className="app-footer"><span>ProspectForge · Votre prochain projet commence ici.</span><Link href="/guide">Besoin d’un coup de main ? <ArrowUpRight size={13}/></Link></footer>

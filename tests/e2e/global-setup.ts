@@ -9,7 +9,7 @@ export default async function globalSetup() {
     const tables = await db<{ tablename: string }[]>`select tablename from pg_tables where schemaname = 'public'
       and tablename not in ('schema_migrations','website_templates','admin_settings','sales_offers','prompt_strategies')`
     if (tables.length) await db.unsafe(`truncate ${tables.map((t) => `"${t.tablename}"`).join(', ')} restart identity cascade`)
-    await db`update admin_settings set data = '{}'::jsonb, global_pause = false, campaigns_emergency_stop = false`.catch(() => undefined)
+    await db`update admin_settings set data = '{}'::jsonb, secrets = '{}'::jsonb, global_pause = false, campaigns_emergency_stop = false`.catch(() => undefined)
   } finally {
     await db.end()
   }

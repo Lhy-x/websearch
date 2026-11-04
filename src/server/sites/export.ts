@@ -15,8 +15,8 @@ import { renderSiteDocument } from './html'
  * Static export: index.html + site.css + site.json (source config, re-importable) + authorised media
  * downloaded locally + README. The demo banner and noindex are removed for delivery to the client.
  */
-export async function exportSiteZip(v: WebsiteVersionData, opts: { includeMedia?: boolean; allowPrivate?: boolean } = {}): Promise<{ filename: string; buffer: Buffer; warnings: string[] }> {
-  if (isHtmlSite(v)) return zip(slugify(v.businessName) || 'site', [
+export async function buildSiteFiles(v: WebsiteVersionData, opts: { includeMedia?: boolean; allowPrivate?: boolean } = {}): Promise<{name:string;files:{name:string;data:Buffer|string}[];warnings:string[]}> {
+  if (isHtmlSite(v)) return bundle(slugify(v.businessName) || 'site', [
     { name: 'index.html', data: v.glassScene ? await renderPersonalizedDocument(v,{mode:'export'}) : renderBespokeDocument(v, { mode: 'export' }) },
     { name: 'site.json', data: JSON.stringify(v, null, 2) },
     ...(v.glassScene ? await Promise.all(['licenses/Three-MIT.txt','licenses/Space-Grotesk-OFL.txt','PROVENANCE.md'].map(async name => ({name,data:await readFile(`vendor/premium-3d-glass/${name}`,'utf8')}))) : []),
@@ -29,7 +29,7 @@ export async function exportSiteZip(v: WebsiteVersionData, opts: { includeMedia?
       { name: 'README.txt', data: 'Site 3D Glass autonome : ouvrez index.html ou hébergez-le sur un serveur statique. WebGL 2 requis pour la 3D. Une version lisible reste disponible sans JavaScript et en mode mouvement réduit. Les liens de contact ouvrent le téléphone ou la messagerie ; aucun formulaire serveur. Les médias ajoutés restent des liens distants. Vérifiez les textes et les prestations avant publication. Voir PROVENANCE.md et les licences jointes.\n' },
     ]
     for (const name of ['licenses/Three-MIT.txt', 'licenses/Space-Grotesk-OFL.txt', 'PROVENANCE.md', 'SOURCES.md']) files.push({ name, data: await readFile(`vendor/premium-3d-glass/${name}`, 'utf8') })
-    return zip(slugify(v.business.name) || 'site-3d', files, [])
+    return bundle(slugify(v.business.name) || 'site-3d', files, [])
   }
   const cfg: SiteConfig = v
   const warnings: string[] = []
@@ -59,7 +59,13 @@ export async function exportSiteZip(v: WebsiteVersionData, opts: { includeMedia?
     name: 'README.txt',
     data: `Site statique « ${cfg.business.name} »\n\n- index.html et site.css : site prêt à héberger (tout hébergement statique : o2switch, OVH, Netlify, GitHub Pages…).\n- site.json : configuration source, ré-importable dans ProspectForge.\n- assets/ : médias dont la licence a été renseignée.\n\nAvant publication : vérifier les prestations indiquées comme « indicatives », les horaires, et retirer/adapter la mention de démonstration dans le pied de page si le client a validé le site.\n`,
   })
-  return zip(slugify(cfg.business.name) || 'site', files, warnings)
+  return bundle(slugify(cfg.business.name) || 'site', files, warnings)
+}
+
+function bundle(name:string,files:{name:string;data:Buffer|string}[],warnings:string[]){return {name,files,warnings}}
+export async function exportSiteZip(v:WebsiteVersionData,opts:{includeMedia?:boolean;allowPrivate?:boolean}={}) {
+  const result=await buildSiteFiles(v,opts)
+  return zip(result.name,result.files,result.warnings)
 }
 
 async function zip(name: string, files: { name: string; data: Buffer | string }[], warnings: string[]) {

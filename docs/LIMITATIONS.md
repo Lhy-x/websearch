@@ -15,6 +15,8 @@ règles), mais **n'a pas pu être exécuté contre le vrai service** :
 - envoi réel via Resend / SMTP, synchronisation IMAP, webhook Resend réel (la vérification de signature Svix est testée) ;
 - vérification MX / SPF / DKIM / DMARC (pas de DNS sortant : statut « non testé », jamais « invalide ») ;
 - crawl et audit de sites de prospects réels (vérifiés sur un serveur HTTP local) ;
+- Stripe Checkout/Billing réel, cPanel et FTPS o2switch : parcours, signatures et requêtes vérifiés avec
+  des doubles de test ; les droits du compte, DNS et AutoSSL doivent être validés sur le compte réel ;
 - `docker compose up` (pas de démon Docker ; la configuration est validée par `docker compose config`).
 
 À faire en premier sur votre machine : renseigner les clés, puis lancer une recherche avec Sirene activé, un email
@@ -28,7 +30,10 @@ de test (Paramètres → Prospection) et une génération IA.
 - **Assistant** (§26 G) : 7 outils (recherche, liste, génération de démos, préparation de campagne en brouillon, performance des campagnes, conversations à traiter, pipeline). Il ne peut ni envoyer d'emails ni activer une campagne (volontaire). Sans IA, l'interprétation par règles couvre les formulations courantes en français uniquement. Le mode IA (tool use Anthropic / OpenAI) n'a pas été exécuté faute de clé.
 - **Lighthouse** : non intégré (l'audit Playwright maison couvre HTTPS, mobile, SEO de base, CTA, liens cassés, erreurs JS).
 - **Suivi des ouvertures d'email** : volontairement non activé (métrique imparfaite) ; seules les vues des démos sont comptées (hors robots et hors administrateur connecté).
-- **Publication automatique vers un hébergement / domaine client** : non implémentée ; l'export ZIP statique est prêt à déposer sur n'importe quel hébergement.
+- **Publication o2switch** : intégrée pour les sites statiques via cPanel et FTPS, avec abonnement Stripe,
+  preuve DNS et attente du certificat. Nécessite les droits du compte, un domaine déjà acheté,
+  un tableau de bord public et son worker disponible. Le mode test simule la publication.
+  Voir [le guide](HEBERGEMENT-ET-MODE-TEST.md) ; les permissions réelles restent à valider avec vos identifiants.
 - **Géocodage hors ligne complet** : la table intégrée ne couvre que ~140 villes ; un index des localités Overture (thème *divisions*) serait l'étape suivante.
 - **Rayon > 50 km** pour Sirene/OSM : plafonné à 50 km par ces API.
 - **Pièces jointes entrantes** : listées (nom, taille) mais non stockées.
@@ -40,7 +45,8 @@ de test (Paramètres → Prospection) et une génération IA.
 
 ## Par conception
 
-- Un seul administrateur ; pas de comptes, d'équipes ni de facturation.
+- Un seul administrateur ; pas de comptes d’équipes. Les clients retrouvent leur commande et leur
+  abonnement par un lien privé ; les factures de vente et d’hébergement passent par Stripe.
 - La file de tâches PostgreSQL vise le volume d'un utilisateur (milliers de tâches/jour), pas des millions.
 - Les recherches Overture lisent les données à distance à chaque exécution (rien n'est téléchargé en masse) ;
   la première recherche d'un worker charge les métadonnées (~5–10 s).

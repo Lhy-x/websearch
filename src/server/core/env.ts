@@ -3,6 +3,8 @@ import { z } from 'zod'
 const schema = z.object({
   STRIPE_SECRET_KEY:z.string().default(''),
   STRIPE_WEBHOOK_SECRET:z.string().default(''),
+  STRIPE_TEST_SECRET_KEY:z.string().default(''),
+  STRIPE_TEST_WEBHOOK_SECRET:z.string().default(''),
   DATABASE_URL: z.string().min(1).default('postgres://pf:pf@localhost:5432/prospectforge'),
   APP_BASE_URL: z.string().url().default('http://localhost:3000'),
   ADMIN_EMAIL: z.string().default(''),
@@ -32,6 +34,8 @@ const schema = z.object({
   IMAP_USER: z.string().default(''),
   IMAP_PASSWORD: z.string().default(''),
   INBOUND_WEBHOOK_SECRET: z.string().default(''),
+  O2SWITCH_FTP_PASSWORD:z.string().default(''),
+  O2SWITCH_CPANEL_TOKEN:z.string().default(''),
   WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(16).default(2),
   NODE_ENV: z.string().default('development'),
 })

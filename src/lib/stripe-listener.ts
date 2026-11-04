@@ -5,6 +5,11 @@ export const STRIPE_WEBHOOK_EVENTS = [
   'checkout.session.expired',
   'invoice.paid',
   'invoice.finalized',
+  'invoice.payment_failed',
+  'invoice.payment_succeeded',
+  'customer.subscription.created',
+  'customer.subscription.updated',
+  'customer.subscription.deleted',
 ] as const
 
 export type StripeListenerStatus = {

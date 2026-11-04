@@ -8,6 +8,7 @@ import { aiAvailability } from '@/server/ai/client'
 import { billingSetup } from '@/server/billing/stripe'
 import { getSettings } from '@/server/core/settings'
 import { fmtRelative } from '@/lib/utils'
+import { WorkspaceMissions } from '@/components/workspace-progress'
 
 export const metadata = { title: 'Vue d’ensemble' }
 export const dynamic = 'force-dynamic'
@@ -45,6 +46,7 @@ export default async function DashboardPage() {
     <div className="overview-welcome"><div><p className="eyebrow">VOTRE ATELIER, EN UN COUP D’ŒIL</p><h1>Faisons avancer vos projets.</h1><p>Une entreprise. Une belle démo. Votre prochain client.</p></div><div className="overview-actions"><Button asChild><Link href="/generator"><Plus/>Créer un site</Link></Button><Button variant="outline" asChild><Link href="/search">Trouver des prospects<ArrowUpRight/></Link></Button></div></div>
     <div className="metric-grid">{metrics.map((m, index) => <Link key={m.href + m.label} href={m.href} className={`metric-card ${index === 0 ? 'featured' : ''}`}><div className="metric-top">{m.label}<span><ArrowUpRight size={15}/></span></div><strong className="metric-value tabular">{m.value}</strong><p className="metric-hint">{m.hint}</p></Link>)}</div>
     <NextAction {...next}/>
+    <WorkspaceMissions/>
     <div className="overview-grid">
       <Card><CardHeader title="De la rencontre à la vente" description="Quatre étapes. Toujours une prochaine action claire." actions={<Link href="/guide" className="flex items-center gap-1 text-xs text-muted">Le guide<ArrowUpRight size={14}/></Link>}/><CardBody><div className="journey-cards">{WORKFLOW.map((step, i) => <Link href={step.href} key={step.href} className="journey-card"><span className="journey-number">0{i + 1}</span><span className="journey-card-icon"><step.icon size={19}/></span><h3>{step.title}</h3><p>{step.description}</p><span className="journey-arrow">C’est parti <ArrowRight size={14}/></span></Link>)}</div></CardBody></Card>
       <div className="space-y-5"><Card><CardHeader title="Votre espace est-il prêt ?" description="Ces réglages sont conservés pour les prochains projets."/><CardBody className="pt-2"><div className="setup-list">{setup.map((s, i) => <Link href={s.href} key={s.href} className="setup-item"><span className={`setup-state ${s.ready ? 'is-ready' : ''}`}>{s.ready ? <Check size={14}/> : i + 1}</span><span><strong>{s.title}</strong><small>{s.hint}</small></span><ChevronRight size={15}/></Link>)}</div></CardBody></Card><Card><CardBody><div className="mb-3 flex items-center gap-2 text-primary"><Sparkles size={17}/><span className="text-xs font-medium">Votre méthode, vos créations</span></div><p className="text-xs leading-7 text-muted">Chaque site est conçu à partir de l’entreprise choisie. Vous gardez la main sur les textes, la démo et l’email avant de les partager.</p></CardBody></Card></div>

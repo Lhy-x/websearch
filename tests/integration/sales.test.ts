@@ -54,7 +54,7 @@ it('validates Stripe signatures, rejects amount and mode mismatches, handles del
  await expect(verifiedStripeEvent(raw+' ',header)).rejects.toThrow('Signature')
 })
 it('requires public HTTPS for live sales, records a live sale once and keeps paid delivery after trash',async()=>{
- process.env.STRIPE_SECRET_KEY='sk_live_fake_only';resetEnvCache();expect((await billingSetup()).ready).toBe(false)
+ process.env.STRIPE_SECRET_KEY='sk_live_fake_only';resetEnvCache();await updateSettings({launch:{mode:'live'}},{allowModeChange:true});expect((await billingSetup()).ready).toBe(false)
  await updateSettings({sites:{previewBaseUrl:'https://demo.example.test'}})
  const g=await site();await createCheckout(g.previewToken);const o=await order();const live=event(o);live.livemode=true
  await processStripeEvent(live);await processStripeEvent(live)

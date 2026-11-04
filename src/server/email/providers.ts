@@ -1,7 +1,7 @@
 import { randomUUID, createHmac, timingSafeEqual } from 'node:crypto'
 import nodemailer from 'nodemailer'
 import { NotConfiguredError, TransientError } from '../core/errors'
-import { getRuntimeConfig, getSecret } from '../core/settings'
+import { getRuntimeConfig, getSecret, getSettings } from '../core/settings'
 
 export interface OutgoingEmail {
   from: string
@@ -71,6 +71,7 @@ export function smtpProvider(opts: { host: string; port: number; secure: boolean
 }
 
 export async function getEmailProvider(): Promise<EmailProvider> {
+  if((await getSettings()).launch.mode==='test')return sandboxProvider
   const e = await getRuntimeConfig()
   if (e.EMAIL_PROVIDER === 'resend') {
     const key = await getSecret('RESEND_API_KEY')

@@ -13,9 +13,9 @@ const config: NextConfig = {
   output: 'standalone',
   outputFileTracingIncludes: { '/*': ['./vendor/premium-3d-glass/**/*'] },
   distDir: process.env.NEXT_DIST_DIR || '.next',
-  serverExternalPackages: ['playwright', 'postgres', 'imapflow', 'nodemailer', 'mailparser', 'archiver', 'exceljs', 'hyparquet', 'hyparquet-compressors'],
+  serverExternalPackages: ['playwright', 'postgres', 'imapflow', 'nodemailer', 'mailparser', 'archiver', 'exceljs', 'hyparquet', 'hyparquet-compressors','basic-ftp'],
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }]
+    return [{ source: '/:path*', headers: securityHeaders }, { source: '/purchase/:path*', headers: [{key:'Referrer-Policy',value:'no-referrer'},{key:'Cache-Control',value:'private, no-store'},{key:'X-Robots-Tag',value:'noindex, nofollow'}] }]
   },
 }
 export default config

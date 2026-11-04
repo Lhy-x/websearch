@@ -12,7 +12,7 @@ test('simple navigation, demo → email → signed payment → invoice/download 
   await db`insert into business_contacts(business_id,kind,value,normalized_value,source,status) values(${businessId},'email','client@example.test','client@example.test','manual','SOURCE_CONFIRMED')`
   await page.request.post('/api/auth/login',{data:{email:'admin@e2e.local',password:'e2e-password-123'}})
   await page.request.put('/api/settings',{data:{commerce:{enabled:true,priceCents:19900},sites:{previewBaseUrl:baseURL},ai:{provider:'none'}}})
-  for(const [key,value] of Object.entries({STRIPE_SECRET_KEY:'sk_test_fake_only',STRIPE_WEBHOOK_SECRET:secret}))await page.request.post('/api/settings',{data:{action:'secret',key,value}})
+  await page.request.post('/api/billing/credentials',{data:{mode:'test',key:'sk_test_fake_only',webhook:secret}})
   const g=await page.request.post(`/api/prospects/${businessId}`,{data:{action:'generate_site',generator:'deterministic'}});const {jobId}=await g.json()
   let job:{status:string;result:{websiteId:string}}
   await expect.poll(async()=>{job=(await(await page.request.get(`/api/jobs/${jobId}`)).json()).job;return job.status},{timeout:90000}).toBe('COMPLETED')

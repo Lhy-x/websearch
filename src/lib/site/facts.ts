@@ -25,4 +25,7 @@ export interface BusinessFacts {
   creationYear?: number | null
   ownSite?: { url: string | null; title: string | null; description: string | null; text: string | null } | null
   sources?: string[]
+  publicDetails?: string | null
+  artDirection?: string | null
+  verifiedDetails?: { field:string; value:unknown; source:string; url:string|null }[]
 }

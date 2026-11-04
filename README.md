@@ -108,3 +108,8 @@ Les clés de services et les connexions se règlent dans **Paramètres → Clés
   liste de suppression globale ; opposition et suppression des données (RGPD) depuis la fiche.
 - Les démos sont marquées « Démonstration non officielle » et `noindex` ; elles n'usurpent pas le site du commerce.
 - Le contenu généré n'invente ni avis, ni années d'expérience, ni tarifs, ni certifications (garde-fou testé).
+
+### Lots de créations et hébergement client
+
+[Guide Mac, suivi des lots, abonnement o2switch et passage test → production](docs/HEBERGEMENT-ET-MODE-TEST.md).
+Le prix mensuel se règle dans le site. Les clés de test et réelles sont conservées séparément.

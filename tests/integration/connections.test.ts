@@ -21,6 +21,7 @@ it('encrypts site overrides, explicitly disables an environment key and can inhe
  await inheritSecret('OPENAI_API_KEY');expect(await getSecret('OPENAI_API_KEY')).toBe('test-environment-key-only')
 })
 it('uses saved SMTP values and public URLs without changing process.env',async()=>{
+ await updateSettings({launch:{mode:'live'}},{allowModeChange:true})
  await updateSettings({runtime:{APP_BASE_URL:'https://atelier.example.test',EMAIL_PROVIDER:'smtp',SMTP_HOST:'smtp.example.test',SMTP_PORT:465,SMTP_USER:'fixture@example.test',SMTP_SECURE:true}})
  await setSecret('SMTP_PASSWORD','test-smtp-password-only')
  const spy=vi.spyOn(nodemailer,'createTransport').mockReturnValue({} as ReturnType<typeof nodemailer.createTransport>)

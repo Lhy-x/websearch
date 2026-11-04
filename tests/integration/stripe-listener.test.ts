@@ -36,14 +36,17 @@ afterEach(async () => {
 afterAll(closeDb)
 
 it('starts only once, captures a chunked secret privately, verifies signed webhooks and stops its own process', async () => {
+  await setSecret('STRIPE_SECRET_KEY','sk_live_preserved_fixture'); await setSecret('STRIPE_WEBHOOK_SECRET','whsec_preserved_fixture')
   const instance = manager()
   const [first, second] = await Promise.all([instance.start(key, target), instance.start(key, target)])
   expect(first).toMatchObject({state:'running',secretSaved:true,forwardTo:target})
   expect(second.startedAt).toBe(first.startedAt)
-  expect(await getSecret('STRIPE_WEBHOOK_SECRET')).toBe(secret)
-  expect(await getSecret('STRIPE_SECRET_KEY')).toBe(key)
+  expect(await getSecret('STRIPE_TEST_WEBHOOK_SECRET')).toBe(secret)
+  expect(await getSecret('STRIPE_TEST_SECRET_KEY')).toBe(key)
+  expect(await getSecret('STRIPE_SECRET_KEY')).toBe('sk_live_preserved_fixture')
+  expect(await getSecret('STRIPE_WEBHOOK_SECRET')).toBe('whsec_preserved_fixture')
   const [row] = await sql()`select secrets from admin_settings where id=1`
-  expect(row!.secrets.STRIPE_WEBHOOK_SECRET).toMatch(/^v1:/)
+  expect(row!.secrets.STRIPE_TEST_WEBHOOK_SECRET).toMatch(/^v1:/)
   expect(JSON.stringify(row)).not.toContain(secret)
   expect(JSON.stringify(await instance.status())).not.toMatch(/whsec_|sk_test_/)
   const calls = (await readFile(capture,'utf8')).trim().split('\n').map(line=>JSON.parse(line))
@@ -57,22 +60,22 @@ it('starts only once, captures a chunked secret privately, verifies signed webho
   expect((await instance.stop()).state).toBe('stopped')
   expect(()=>process.kill(calls[0].pid,0)).toThrow()
   expect((await instance.stop()).state).toBe('stopped')
-  expect(await getSecret('STRIPE_WEBHOOK_SECRET')).toBe(secret)
+  expect(await getSecret('STRIPE_TEST_WEBHOOK_SECRET')).toBe(secret)
 })
 
 it('refuses real keys and nonlocal forwarding before changing any secret',async()=>{
-  await setSecret('STRIPE_WEBHOOK_SECRET','whsec_existing_test_only')
+  await setSecret('STRIPE_TEST_WEBHOOK_SECRET','whsec_existing_test_only')
   const instance=manager()
   await expect(instance.start('sk_live_fixture_only',target)).rejects.toThrow('clés réelles')
   await expect(instance.start(key,'https://example.test/api/webhooks/stripe')).rejects.toThrow('webhook local')
-  expect(await getSecret('STRIPE_WEBHOOK_SECRET')).toBe('whsec_existing_test_only')
+  expect(await getSecret('STRIPE_TEST_WEBHOOK_SECRET')).toBe('whsec_existing_test_only')
   expect((await instance.status()).state).toBe('stopped')
 })
 
 it('explains the missing CLI without modifying the stored webhook',async()=>{
   const instance=manager(3000,false)
   await expect(instance.start(key,target)).rejects.toThrow('brew install stripe/stripe-cli/stripe')
-  expect(await getSecret('STRIPE_WEBHOOK_SECRET')).toBe('')
+  expect(await getSecret('STRIPE_TEST_WEBHOOK_SECRET')).toBe('')
   expect((await instance.status()).cliAvailable).toBe(false)
 })
 
@@ -82,7 +85,7 @@ it('redacts an authentication failure even when the CLI prints the API key',asyn
   await expect(instance.start(key,target)).rejects.toThrow('refusée')
   const status=await instance.status()
   expect(status.state).toBe('error');expect(JSON.stringify(status)).not.toContain(key)
-  expect(await getSecret('STRIPE_WEBHOOK_SECRET')).toBe('')
+  expect(await getSecret('STRIPE_TEST_WEBHOOK_SECRET')).toBe('')
 })
 
 it('times out an unresponsive listener and terminates it',async()=>{
@@ -92,7 +95,7 @@ it('times out an unresponsive listener and terminates it',async()=>{
   await instance.stop()
   const call=JSON.parse((await readFile(capture,'utf8')).trim())
   expect(()=>process.kill(call.pid,0)).toThrow()
-  expect(await getSecret('STRIPE_WEBHOOK_SECRET')).toBe('')
+  expect(await getSecret('STRIPE_TEST_WEBHOOK_SECRET')).toBe('')
 })
 
 it('reports an unexpected exit and can be started again',async()=>{

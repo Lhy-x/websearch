@@ -65,5 +65,10 @@ Voir `.env.example` (commentée). Minimum : `DATABASE_URL`, `APP_BASE_URL`, `ADM
 
 ## Ce qui n'est jamais fait sans action explicite
 
-Aucun envoi réel tant que `EMAIL_PROVIDER` n'est pas `resend`/`smtp` **et** qu'une campagne n'est pas activée ;
-aucune modification DNS ; aucun déploiement public automatique ; aucune dépense IA au-delà du budget journalier.
+Les envois restent simulés en mode test. En production, un envoi nécessite un fournisseur configuré
+et une action explicite ou une campagne active. Le client ajoute lui-même ses DNS ; l’application
+relie ensuite son domaine dans cPanel après preuve de propriété. La publication statique démarre
+après la souscription payée à l’offre d’hébergement activée par le vendeur.
+
+Voir [Hébergement o2switch et passage test → production](HEBERGEMENT-ET-MODE-TEST.md).
+Les limites et budgets IA restent ceux des paramètres et du fournisseur.

@@ -46,6 +46,7 @@ export const PATCH = adminRoute(async ({ params, body }) => {
 }, patchSchema)
 
 const actionSchema = z.discriminatedUnion('action', [
+  z.object({action:z.literal('site_brief'),publicDetails:z.string().max(8000),artDirection:z.string().max(3000)}),
   z.object({ action: z.literal('enrich') }),
   z.object({ action: z.literal('audit') }),
   z.object({ action: z.literal('generate_site'), templateId: z.string().optional().nullable(), style: z.string().optional().nullable(), generator: z.enum(['auto', 'bespoke', 'ai', 'deterministic', 'glass3d', 'personalized']).default('personalized') }),
@@ -70,6 +71,10 @@ export const POST = adminRoute(async ({ params, body }) => {
   const id = params.id
   const a = body as z.infer<typeof actionSchema>
   switch (a.action) {
+    case 'site_brief':
+      await db`insert into business_enrichments(business_id,field,value,source,verified_at,confidence) values(${id},'site_brief',${db.json({publicDetails:a.publicDetails,artDirection:a.artDirection})},'manual',now(),1) on conflict(business_id,field,source) do update set value=excluded.value,verified_at=now(),retrieved_at=now()`
+      await auditLog({action:'business.creative_brief',entityType:'business',entityId:id,actor:'admin'})
+      return {ok:true}
     case 'enrich':
       return { jobId: (await enqueueJob('business.enrich', { businessIds: [id] }, { priority: 30 })).job.id }
     case 'audit':

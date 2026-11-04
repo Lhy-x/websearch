@@ -45,6 +45,8 @@ export async function loadBusinessFacts(businessId: string): Promise<BusinessFac
   const meta = enr.find((e) => e.field === 'website_meta')
   const siteText = enr.find((e) => e.field === 'website_text')
   const sector = b.sector ? SECTOR_BY_ID.get(b.sector) : undefined
+  const details=await db<{field:string;value:unknown;source:string;source_url:string|null}[]>`select field,value,source,source_url from business_enrichments where business_id=${businessId} and field not in ('website_meta','website_text','opening_hours') and (verified_at is not null or source='manual') order by verified_at desc nulls last,retrieved_at desc limit 20`
+  const brief=details.find(item=>item.field==='site_brief')?.value as {publicDetails?:string;artDirection?:string}|undefined
   return {
     businessId: b.id,
     name: b.name,
@@ -70,5 +72,8 @@ export async function loadBusinessFacts(businessId: string): Promise<BusinessFac
     creationYear: creation && /^\d{4}/.test(creation) ? Number(creation.slice(0, 4)) : null,
     ownSite: meta || siteText ? { url: b.website_url, title: meta?.value.title ?? null, description: meta?.value.description ?? null, text: siteText?.value.text ?? null } : null,
     sources: [...new Set(srcs.map((x) => x.source))],
+    publicDetails:brief?.publicDetails?.slice(0,8000)??null,
+    artDirection:brief?.artDirection?.slice(0,3000)??null,
+    verifiedDetails:details.filter(item=>item.field!=='site_brief').slice(0,8).map(item=>({field:item.field,value:JSON.stringify(item.value).length<=3000?item.value:{extrait:JSON.stringify(item.value).slice(0,3000)},source:item.source,url:item.source_url})),
   }
 }

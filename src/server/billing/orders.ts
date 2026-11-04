@@ -4,8 +4,9 @@ import { AppError } from '../core/errors'
 import { randomToken } from '../core/crypto'
 import { lookupPreview, getWebsiteVersion } from '../sites/service'
 import { websiteVersionSchema } from '@/lib/site/bespoke-schema'
-import { billingSetup, publicBase, stripeClient, stripeUrl } from './stripe'
+import { billingSetup, publicBase, stripeClient, stripeUrl,stripeCredentials } from './stripe'
 import { getSecret } from '../core/settings'
+import { processHostingStripeEvent } from '../hosting/service'
 
 export async function createCheckout(token:string) {
  const setup=await billingSetup()
@@ -29,7 +30,7 @@ export async function createCheckout(token:string) {
   return row
  })
  if(order.status==='PENDING')throw new AppError('Paiement en cours de vérification. Consultez votre confirmation.',409)
- const stripe=await stripeClient()
+ const stripe=await stripeClient(setup.live)
  if(order.checkout_url&&order.status==='OPEN') {
   // Check expiry rather than returning an old dead URL when an expiry webhook was missed.
   const [stored]=await db<{stripe_session_id:string}[]>`select stripe_session_id from website_orders where id=${order.id}`
@@ -59,6 +60,8 @@ export async function createCheckout(token:string) {
 
 const ref=(value:unknown)=>typeof value==='string'?value:typeof value==='object'&&value&&'id' in value?String(value.id):null
 export async function processStripeEvent(event:Stripe.Event) {
+ const hosting=await processHostingStripeEvent(event)
+ if(hosting)return hosting
  const obj=event.data.object as unknown as Record<string,unknown>
  const metadata=obj.metadata as {order_id?:string}|null
  const orderId=metadata?.order_id
@@ -83,7 +86,7 @@ export async function processStripeEvent(event:Stripe.Event) {
   const paid=(event.type==='checkout.session.completed'||event.type==='checkout.session.async_payment_succeeded')&&obj.payment_status==='paid'
   if(order.status==='PAID')return {alreadyPaid:true}
   const status=paid?'PAID':event.type==='checkout.session.expired'?'EXPIRED':event.type==='checkout.session.async_payment_failed'?'FAILED':'PENDING'
-  await tx`update website_orders set status=${status},stripe_session_id=${String(obj.id)},stripe_invoice_id=coalesce(${ref(obj.invoice)},stripe_invoice_id),paid_at=case when ${paid} then now() else paid_at end where id=${order.id}`
+  await tx`update website_orders set status=${status},stripe_session_id=${String(obj.id)},stripe_customer_id=coalesce(${ref(obj.customer)},stripe_customer_id),buyer_email=coalesce(${(obj.customer_details as {email?:string}|null)?.email??null},buyer_email),stripe_invoice_id=coalesce(${ref(obj.invoice)},stripe_invoice_id),paid_at=case when ${paid} then now() else paid_at end where id=${order.id}`
   if(paid&&order.livemode&&order.business_id) {
    await tx`update businesses set pipeline_status='WON' where id=${order.business_id}`
    await tx`insert into crm_opportunities(business_id,title,amount_cents,currency,status,signed_at,paid_cents,paid_at) values(${order.business_id},${'Site — '+order.business_name},${order.amount_cents},${order.currency.toUpperCase()},'WON',now(),${order.amount_cents},now())`
@@ -92,9 +95,11 @@ export async function processStripeEvent(event:Stripe.Event) {
  })
 }
 export async function verifiedStripeEvent(raw:string,signature:string) {
- const secret=await getSecret('STRIPE_WEBHOOK_SECRET')
+ let live=false
+ try{live=JSON.parse(raw).livemode===true}catch{throw new AppError('Événement Stripe invalide',400)}
+ const {webhook:secret}=await stripeCredentials(live)
  if(!secret)throw new AppError('Webhook Stripe non configuré',503)
- const stripe=await stripeClient()
+ const stripe=await stripeClient(live)
  try{return stripe.webhooks.constructEvent(raw,signature,secret)}catch{throw new AppError('Signature Stripe invalide',401)}
 }
 export async function getPurchase(token:string) {
@@ -110,11 +115,11 @@ export async function purchaseConfig(token:string) {
 }
 
 export async function expireWebsiteCheckouts(websiteId:string) {
- const orders=await sql()<{id:string;status:string;stripe_session_id:string|null}[]>`select id,status,stripe_session_id from website_orders where website_id=${websiteId} and status in ('CREATING','OPEN','PENDING')`
+ const orders=await sql()<{id:string;status:string;stripe_session_id:string|null;livemode:boolean}[]>`select id,status,stripe_session_id,livemode from website_orders where website_id=${websiteId} and status in ('CREATING','OPEN','PENDING')`
  if(orders.some(o=>o.status==='CREATING'||o.status==='PENDING'))throw new AppError('Un paiement est en cours. Attendez sa confirmation avant de supprimer le site.',409)
  if(!orders.length)return
- const stripe=await stripeClient()
  for(const order of orders) {
+  const stripe=await stripeClient(order.livemode)
   try {await stripe.checkout.sessions.expire(order.stripe_session_id!)}catch{throw new AppError('Un paiement Stripe est ouvert. Fermez-le dans Stripe ou réessayez avant de supprimer le site.',409)}
   await sql()`update website_orders set status='EXPIRED' where id=${order.id} and status='OPEN'`
  }

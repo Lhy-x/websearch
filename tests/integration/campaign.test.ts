@@ -49,7 +49,8 @@ describe('campaign engine', () => {
     expect(cp!.current_step).toBe(1)
     expect(cp!.next_send_at.getTime() - Date.now()).toBeGreaterThan(2.9 * 86400_000)
     const [biz] = await sql()<{ pipeline_status: string }[]>`select pipeline_status from businesses where id = ${b}`
-    expect(biz!.pipeline_status).toBe('CONTACTED')
+    expect(biz!.pipeline_status).toBe('QUALIFIED') // A sandbox delivery is not a real contact.
+    expect((await sql()`select is_test from outbound_messages where id=${m!.id}`)[0]!.is_test).toBe(true)
   })
 
   it('respects the daily cap and the send window', async () => {

@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function SettingsPage({searchParams}:{searchParams:Promise<{tab?:string}>}) {
   const {tab:requestedTab}=await searchParams
-  const tab=['general','ai','outreach','payment','connections','search','sites','scoring','automation','offers','suppression','secrets','infra'].includes(requestedTab??'')?(requestedTab==='secrets'?'connections':requestedTab!):'general'
+  const tab=['general','ai','outreach','payment','hosting','connections','search','sites','scoring','automation','offers','suppression','secrets','infra'].includes(requestedTab??'')?(requestedTab==='secrets'?'connections':requestedTab!):'general'
   const db = sql()
   const [settings, secrets, infra, offers, strategies, suppression] = await Promise.all([
     getSettings(),

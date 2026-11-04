@@ -3,6 +3,8 @@ import {BillingSettings} from '@/components/billing-settings'
 import dynamic from 'next/dynamic'
 import {DataResetPanel} from '@/components/data-reset-panel'
 import {ResendWebhookSettings} from '@/components/resend-webhook-settings'
+import {HostingSettings} from '@/components/hosting-settings'
+import {LaunchModePanel} from '@/components/launch-mode'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -35,7 +37,7 @@ export function SettingsClient({ settings, secrets, infra, offers, strategies, s
   const router = useRouter()
   const [s, setS] = useState<Settings>(settings)
   const [tab,setTab]=useState(initialTab)
-  const [advanced,setAdvanced]=useState(!['general','ai','outreach','payment','connections'].includes(initialTab))
+  const [advanced,setAdvanced]=useState(!['general','ai','outreach','payment','hosting','connections'].includes(initialTab))
   const [busy, setBusy] = useState(false)
   const patch = <K extends keyof Settings>(k: K, v: Partial<Settings[K]>) => setS((x) => ({ ...x, [k]: { ...(x[k] as object), ...v } }))
   const save = async () => {
@@ -65,12 +67,12 @@ export function SettingsClient({ settings, secrets, infra, offers, strategies, s
   return (
     <Tabs value={tab} onValueChange={setTab}>
       <TabsList className="flex-wrap">
-        {[['general','L’essentiel'],['ai','Mon IA'],['outreach','Mes emails'],['payment','Paiement'],['connections','Clés & connexions'],...(advanced?[['search','Recherche'],['sites','Sites'],['scoring','Scoring'],['automation','Automatisations'],['offers','Offres & prompts'],['suppression','Opposition'],['infra','Infrastructure']]:[])].map(([k,l])=><TabsTrigger key={k} value={k!}>{l}</TabsTrigger>)}
-        <button className="px-3 py-2 text-xs text-muted" onClick={()=>{if(advanced&&!['general','ai','outreach','payment','connections'].includes(tab))setTab('general');setAdvanced(!advanced)}}>Options avancées {advanced?'−':'+'}</button>
+        {[['general','L’essentiel'],['ai','Mon IA'],['outreach','Mes emails'],['payment','Paiement'],['hosting','Hébergement'],['connections','Clés & connexions'],...(advanced?[['search','Recherche'],['sites','Sites'],['scoring','Scoring'],['automation','Automatisations'],['offers','Offres & prompts'],['suppression','Opposition'],['infra','Infrastructure']]:[])].map(([k,l])=><TabsTrigger key={k} value={k!}>{l}</TabsTrigger>)}
+        <button className="px-3 py-2 text-xs text-muted" onClick={()=>{if(advanced&&!['general','ai','outreach','payment','hosting','connections'].includes(tab))setTab('general');setAdvanced(!advanced)}}>Options avancées {advanced?'−':'+'}</button>
       </TabsList>
 
-      <TabsContent value="general"><div className="settings-intro"><div><p className="eyebrow mb-3">À VOTRE IMAGE</p><h2>Trois réglages pour bien démarrer.</h2><p>Connectez votre IA, préparez votre signature et ajoutez le paiement quand vous souhaitez vendre. Vous pourrez revenir sur chaque choix.</p></div><span className="settings-icon"><Settings2 size={25}/></span></div><div className="grid gap-5 md:grid-cols-3">{[{value:'ai',title:'1. Mon intelligence artificielle',status:infra.ai.available?'Connectée':'À connecter',description:'Votre moteur de création pour des sites sur mesure.',icon:Sparkles},{value:'outreach',title:'2. Ma signature email',status:s.outreach.senderEmail||'À personnaliser',description:'Votre nom et vos coordonnées dans chaque proposition.',icon:Mail},{value:'payment',title:'3. Mon paiement Stripe',status:s.commerce.enabled?'Configuration à vérifier':'À configurer quand vous êtes prêt',description:'Un prix unique, le paiement et une facture pour le client.',icon:CreditCard}].map(item=><Card key={item.value}><CardBody><span className="mb-5 inline-flex rounded-2xl bg-primary/8 p-3 text-primary"><item.icon size={21}/></span><h3 className="text-sm font-semibold tracking-tight">{item.title}</h3><p className="mt-3 text-xs leading-7 text-muted">{item.description}</p><p className="my-5 truncate text-xs font-medium text-primary">{item.status}</p><Button variant="outline" onClick={()=>setTab(item.value)}>Configurer<ArrowRight/></Button></CardBody></Card>)}</div></TabsContent>
-      <TabsContent value="payment"><BillingSettings onSaved={data=>{patch('commerce',data.commerce);patch('sites',{previewBaseUrl:data.base})}}/></TabsContent>
+      <TabsContent value="general"><div className="mb-6"><LaunchModePanel onChanged={mode=>patch('launch',{mode})}/></div><div className="settings-intro"><div><p className="eyebrow mb-3">À VOTRE IMAGE</p><h2>Trois réglages pour bien démarrer.</h2><p>Connectez votre IA, préparez votre signature et ajoutez le paiement quand vous souhaitez vendre. Vous pourrez revenir sur chaque choix.</p></div><span className="settings-icon"><Settings2 size={25}/></span></div><div className="grid gap-5 md:grid-cols-3">{[{value:'ai',title:'1. Mon intelligence artificielle',status:infra.ai.available?'Connectée':'À connecter',description:'Votre moteur de création pour des sites sur mesure.',icon:Sparkles},{value:'outreach',title:'2. Ma signature email',status:s.outreach.senderEmail||'À personnaliser',description:'Votre nom et vos coordonnées dans chaque proposition.',icon:Mail},{value:'payment',title:'3. Mon paiement Stripe',status:s.commerce.enabled?'Configuration à vérifier':'À configurer quand vous êtes prêt',description:'Un prix unique, le paiement et une facture pour le client.',icon:CreditCard}].map(item=><Card key={item.value}><CardBody><span className="mb-5 inline-flex rounded-2xl bg-primary/8 p-3 text-primary"><item.icon size={21}/></span><h3 className="text-sm font-semibold tracking-tight">{item.title}</h3><p className="mt-3 text-xs leading-7 text-muted">{item.description}</p><p className="my-5 truncate text-xs font-medium text-primary">{item.status}</p><Button variant="outline" onClick={()=>setTab(item.value)}>Configurer<ArrowRight/></Button></CardBody></Card>)}</div></TabsContent>
+      <TabsContent value="hosting"><HostingSettings onSaved={value=>patch('hosting',value)}/></TabsContent><TabsContent value="payment"><BillingSettings onSaved={data=>{patch('commerce',data.commerce);patch('sites',{previewBaseUrl:data.base})}}/></TabsContent>
       <TabsContent value="ai" className="space-y-4">
         <Card><CardBody className="grid gap-4 md:grid-cols-3">
           <Field label="Fournisseur" hint="Abonnement = vos crédits Claude Pro/Max ou ChatGPT, via le CLI officiel connecté sur la machine du worker. Aucune clé API."><Select value={s.ai.provider} onChange={(e) => patch('ai', { provider: e.target.value as Settings['ai']['provider'] })}>

@@ -78,6 +78,7 @@ export class Worker {
       const minute = new Date().toISOString().slice(0, 16)
       await enqueueJob('campaign.tick', {}, { priority: 10, idempotencyKey: `campaign.tick:${minute}`, maxAttempts: 1 })
       if ((await getRuntimeConfig()).IMAP_HOST && Number(minute.slice(-2)) % 5 === 0) await enqueueJob('inbox.sync', {}, { priority: 20, idempotencyKey: `inbox.sync:${minute}`, maxAttempts: 2 })
+      if(Number(minute.slice(-2))%5===0)await enqueueJob('hosting.sweep',{}, {priority:80,idempotencyKey:`hosting.sweep:${minute}`,maxAttempts:2})
       if (minute.endsWith('03:17')) await enqueueJob('maintenance.cleanup', {}, { idempotencyKey: `cleanup:${minute.slice(0, 10)}` })
     })
     console.log(`[worker] ${this.id} démarré (concurrence ${this.concurrency()})`)

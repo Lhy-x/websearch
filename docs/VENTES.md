@@ -24,7 +24,8 @@ Dans **Paramètres → Paiement**, définir :
 4. L’activation du bouton de paiement.
 
 Commencer avec une clé `sk_test_…`. Les secrets sont saisis dans l’application ou dans `.env`
-(`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`), jamais dans le code ou le navigateur public.
+(`STRIPE_TEST_SECRET_KEY`, `STRIPE_TEST_WEBHOOK_SECRET` pour les tests ;
+`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` pour les paiements réels), jamais dans le code ou le navigateur public.
 Les champs vides conservent les clés déjà enregistrées. Les valeurs enregistrées sur le site sont prioritaires sur .env ; « Clés & connexions → Utiliser .env » rétablit une clé du fichier. L’état affiché décrit la configuration,
 pas une garantie d’acceptation du compte Stripe.
 
@@ -46,6 +47,11 @@ Endpoint : `https://votre-domaine/api/webhooks/stripe`.
 - `checkout.session.expired`
 - `invoice.paid`
 - `invoice.finalized`
+- `invoice.payment_succeeded`
+- `invoice.payment_failed`
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
 
 Le retour depuis Stripe n’est jamais une preuve de paiement. Seul le webhook signé confirme
 le montant, la devise et le mode test/réel. Les événements sont idempotents et peuvent arriver
@@ -89,18 +95,21 @@ stripe listen --forward-to localhost:3000/api/webhooks/stripe
 ```
 
 Dans ce mode manuel seulement, copier le secret `whsec_…` affiché dans Paramètres → Paiement.
-Ne pas lancer deux relais simultanément pour le même webhook. Le démarrage automatique remplace les
-clés Stripe enregistrées par celles de son mode test ; après arrêt, enregistrer à nouveau les clés
-d’un webhook permanent si nécessaire.
+Ne pas lancer deux relais simultanément pour le même webhook. Le relais automatique enregistre
+uniquement la paire de test ; les clés réelles et le webhook permanent restent conservés.
 Les tests automatiques du dépôt simulent Checkout et envoient des événements signés ; ils ne
 font pas de débit externe et ne valident pas votre compte Stripe réel.
 
 ### Vendre réellement
 
 Il faut une application hébergée avec une URL publique HTTPS, un compte Stripe activé et
-les clés/webhooks réels correspondants. Le mode réel refuse les adresses locales. Renseigner
+les clés/webhooks réels correspondants, puis le bouton **Désactiver le mode test et passer en production**
+dans **Paramètres → L’essentiel**. Le mode réel refuse les adresses locales. Renseigner
 un nom de domaine dans les paramètres ne publie pas l’application : voir DEPLOYMENT.md.
-L’hébergement client n’est pas automatique ; le client télécharge le site livré. Les remboursements,
+Après paiement, l’espace client propose le ZIP ou un abonnement au tarif mensuel configuré dans
+Hébergement. La publication o2switch et le domaine existant sont automatisés après confirmation
+Stripe et preuve de propriété DNS. Voir [HEBERGEMENT-ET-MODE-TEST.md](HEBERGEMENT-ET-MODE-TEST.md)
+pour les réglages, le bouton de passage en production et les limites de validation. Les remboursements,
 les avoirs et les contestations se gèrent dans Stripe ; leur synchronisation n’est pas incluse ici.
 
 ## Supprimer un site
@@ -121,5 +130,5 @@ PATH="$(brew --prefix node@22)/bin:$PATH" npm ci
 bash LANCER-MAC.command
 ```
 
-Le lanceur applique la migration `0004_sales.sql`. Le prix et les clés sont à configurer
+Le lanceur applique les migrations, dont `0005_studio.sql`. Le prix et les clés sont à configurer
 une seule fois dans l’application avant d’activer les paiements.

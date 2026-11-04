@@ -56,3 +56,20 @@ Erreurs : `{ "error": string, "code"?: string, "issues"?: [{ path, message }] }`
 | GET | `/api/estimate?task=&count=` | Estimation de coût IA avant une opération en lot |
 | GET | `/api/connectors` | État des connecteurs |
 | GET | `/api/health` (public) | Santé (BD) |
+
+## Lots, progression et hébergement
+
+| Méthode | Route | Description |
+|---|---|---|
+| GET | `/api/generation-batches` | Lots récents et nombre réel de tâches actives |
+| GET/POST | `/api/generation-batches/:id` | Lignes paginées, `retry` ou `cancel_pending`, `jobId` facultatif |
+| GET | `/api/progress` | Objectifs réels, XP et niveau de l’atelier |
+| GET/POST | `/api/launch` | Contrôles puis changement explicite `mode: test ou live` |
+| POST | `/api/billing/credentials` | Paire Stripe pour `mode: test ou live`, secrets masqués |
+| GET/PUT/POST | `/api/hosting` | Offre/prix/connexion, enregistrement, test cPanel/FTPS en lecture seule |
+| GET/POST | `/api/customer/:token` | Commande payée privée ; `subscribe`, `portal`, `publish`, `domain`, `verify_domain` |
+| GET | `/purchase/:token/site` | Aperçu isolé de la version achetée, après paiement |
+
+Les routes administrateur exigent une session ; les mutations hébergement/client/mode exigent
+une origine autorisée. L’espace client utilise le jeton privé de la commande payée, sans accès
+aux autres commandes ni aux identifiants des fournisseurs. Voir le guide d’hébergement.

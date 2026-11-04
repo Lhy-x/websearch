@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import {useQueryClient} from '@tanstack/react-query'
 import Link from 'next/link'
 import { ArrowUpRight, Check, Copy, ExternalLink, KeyRound, RefreshCw, Save, Search, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
@@ -12,26 +13,28 @@ import { Badge, Card, CardBody, CardHeader, Field, Input, Notice, Select } from 
 import { ResendWebhookSettings } from './resend-webhook-settings'
 
 type ConnectionData={values:RuntimeConfig;overrides:Settings['runtime'];maxConcurrentJobs:number;secrets:Record<string,'env'|'db'|'missing'>;bootstrap:{key:string;configured:boolean}[]}
-type Group='IA'|'Recherche'|'Email'|'Paiement'|'Réglages'
+type Group='IA'|'Recherche'|'Email'|'Paiement'|'Hébergement'|'Réglages'
 export function ConnectionsSettings({onSaved}:{onSaved?:(data:ConnectionData)=>void}) {
+  const cache=useQueryClient()
   const [data,setData]=useState<ConnectionData|null>(null)
   const [error,setError]=useState('')
   const [group,setGroup]=useState<Group>('IA')
   const [query,setQuery]=useState('')
-  async function load(){try{const value=await api<ConnectionData>('/api/connections');setData(value);setError('');onSaved?.(value)}catch(e){setError((e as Error).message)}}
+  async function load(){try{const value=await api<ConnectionData>('/api/connections');setData(value);setError('');onSaved?.(value);void cache.invalidateQueries({queryKey:['launch-mode']})}catch(e){setError((e as Error).message)}}
   useEffect(()=>{void load()},[])
   if(error)return <Notice tone="danger" title="La configuration ne peut pas être chargée"><p>{error}</p><Button className="mt-3" variant="outline" onClick={load}>Réessayer</Button></Notice>
   if(!data)return <p role="status" className="p-6 text-sm text-muted">Chargement des connexions…</p>
   const visible=SECRET_GUIDES.filter(item=>query?`${item.title} ${item.key} ${item.group}`.toLowerCase().includes(query.toLowerCase()):item.group===group)
   return <div className="space-y-6">
     <div className="settings-intro"><div><p className="eyebrow mb-3">VOS SERVICES, AU MÊME ENDROIT</p><h2>Connectez seulement ce dont vous avez besoin.</h2><p>Les valeurs enregistrées ici sont prioritaires sur le fichier .env. Les clés restent chiffrées et ne sont jamais réaffichées. Chaque service possède son mini guide.</p></div><span className="settings-icon"><KeyRound size={25}/></span></div>
-    <div className="flex flex-wrap items-center justify-between gap-4"><nav className="flex max-w-full flex-wrap gap-2" aria-label="Types de connexions">{(['IA','Recherche','Email','Paiement','Réglages'] as Group[]).map(value=><Button key={value} size="sm" variant={group===value&&!query?'default':'outline'} aria-pressed={group===value&&!query} onClick={()=>{setGroup(value);setQuery('')}}>{value}</Button>)}</nav><label className="relative w-full sm:w-64"><Search className="absolute left-3.5 top-3.5 size-4 text-muted"/><Input className="pl-10" aria-label="Rechercher une clé" placeholder="Un service ou une clé…" value={query} onChange={e=>setQuery(e.target.value)}/></label></div>
+    <div className="flex flex-wrap items-center justify-between gap-4"><nav className="flex max-w-full flex-wrap gap-2" aria-label="Types de connexions">{(['IA','Recherche','Email','Paiement','Hébergement','Réglages'] as Group[]).map(value=><Button key={value} size="sm" variant={group===value&&!query?'default':'outline'} aria-pressed={group===value&&!query} onClick={()=>{setGroup(value);setQuery('')}}>{value}</Button>)}</nav><label className="relative w-full sm:w-64"><Search className="absolute left-3.5 top-3.5 size-4 text-muted"/><Input className="pl-10" aria-label="Rechercher une clé" placeholder="Un service ou une clé…" value={query} onChange={e=>setQuery(e.target.value)}/></label></div>
     {group==='IA'&&!query?<Notice title="Claude ou ChatGPT par abonnement ?">Aucune clé API n’est nécessaire avec le CLI officiel connecté sur votre Mac. <Link href="/settings?tab=ai" className="font-medium underline">Choisir mon fournisseur IA</Link>. Pour connecter l’abonnement, lancez <code>claude auth login</code> ou <code>codex login</code> dans le Terminal de la machine qui crée les sites.</Notice>:null}
     {group==='Recherche'&&!query?<Notice title="Vous pouvez commencer sans clé">Overture et Recherche d’entreprises sont des sources publiques. Google Places est facultatif et peut entraîner une facturation chez Google.</Notice>:null}
     {group==='Email'&&!query?<ResendWebhookSettings onSaved={load}/>:null}
     <div className="grid gap-5 xl:grid-cols-2">{visible.map(item=><SecretEditor key={item.key} guide={item} source={data.secrets[item.key]??'missing'} onSaved={load}/>)}</div>
     {query&&!visible.length?<p className="rounded-2xl border border-border bg-panel p-7 text-sm text-muted">Aucun service ne correspond à cette recherche.</p>:null}
     {!query&&['Réglages','Email','Recherche'].includes(group)?<RuntimeForm key={group} data={data} section={group} onSaved={load}/>:null}
+    {group==='Hébergement'&&!query?<Button variant="outline" asChild><Link href="/settings?tab=hosting">Définir mon abonnement et connecter o2switch<ArrowUpRight/></Link></Button>:null}
     {group==='Paiement'&&!query?<Button variant="outline" asChild><Link href="/settings?tab=payment">Définir mon prix et activer le paiement<ArrowUpRight/></Link></Button>:null}
     {group==='Réglages'&&!query?<Card><CardHeader title="Ce qui démarre l’application" description="L’installateur prépare ces valeurs. Elles doivent exister avant l’ouverture du site : elles restent sur la machine, sans être exposées au navigateur."/><CardBody><div className="grid gap-3 sm:grid-cols-2">{data.bootstrap.map(item=><div className="flex min-w-0 items-center gap-2 text-xs" key={item.key}><Check size={14} className={item.configured?'text-success':'text-warning'}/><span className="break-all font-mono text-[11px]">{item.key}</span><Badge tone={item.configured?'success':'warning'}>{item.configured?'Prêt':'À initialiser'}</Badge></div>)}</div><p className="mt-5 text-xs leading-7 text-muted">La connexion PostgreSQL, l’accès administrateur, la clé de session et la clé de chiffrement sont des paramètres de démarrage. Les modifier à chaud pourrait couper votre accès ou rendre vos clés illisibles. Utilisez INSTALLER-MAC.command pour initialiser votre machine ; aucune clé API de service n’a besoin d’être ajoutée manuellement au fichier .env.</p></CardBody></Card>:null}
   </div>

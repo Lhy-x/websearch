@@ -2,7 +2,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Globe, Megaphone, Sparkles, Tag, X, Ban, RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState,useRef } from 'react'
 import { toast } from 'sonner'
 import { useSelection } from './selection'
 import { Button } from './ui/button'
@@ -20,14 +20,17 @@ export function BulkBar() {
   const router = useRouter()
   const [dialog, setDialog] = useState<null | 'campaign' | 'tag'>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const pendingBatch=useRef<{selection:string;requestId:string}|null>(null)
   const ids = [...sel.ids]
   const campaigns = useQuery({ queryKey: ['campaigns-min'], queryFn: () => api<{ id: string; name: string; status: string }[]>('/api/campaigns?min=1'), enabled: dialog === 'campaign' })
   if (!ids.length) return null
   const run = async (action: string, label: string, extra: Record<string, unknown> = {}) => {
     setBusy(action)
     try {
-      const r = await bulk(ids, action, extra)
+      if(action==='generate_site'&&pendingBatch.current?.selection!==ids.join(','))pendingBatch.current={selection:ids.join(','),requestId:crypto.randomUUID()}
+      const r = await bulk(ids, action, {...extra,...(action==='generate_site'?{requestId:pendingBatch.current!.requestId}:{})})
       toast.success(`${label} : ${r.queued !== undefined ? `${r.queued} tâche(s) lancée(s)` : r.added !== undefined ? `${r.added} ajouté(s), ${(r.skipped as unknown[]).length} ignoré(s)` : 'fait'}`)
+      if(action==='generate_site'&&typeof r.batchId==='string'){pendingBatch.current=null;sel.clear();router.push(`/generator?batch=${r.batchId}`)}
       router.refresh()
     } catch (e) {
       toast.error((e as Error).message)

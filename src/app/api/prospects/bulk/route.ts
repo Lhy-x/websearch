@@ -8,6 +8,7 @@ import { enqueueJob } from '@/server/jobs/queue'
 import { addProspects } from '@/server/campaigns/service'
 import { recomputeBusiness } from '@/server/business/recompute'
 import { suppress } from '@/server/email/suppression'
+import { createGenerationBatch } from '@/server/sites/batches'
 
 const schema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(2000),
@@ -18,6 +19,7 @@ const schema = z.object({
   templateId: z.string().optional(),
   style: z.string().optional(),
   generator: z.enum(['auto', 'bespoke', 'ai', 'deterministic', 'glass3d', 'personalized']).optional(),
+  requestId:z.string().uuid().optional(),
 })
 
 /** Bulk actions. Long work is enqueued as jobs; quick DB updates are applied directly. */
@@ -31,10 +33,7 @@ export const POST = adminRoute(async ({ body }) => {
       return { queued: jobs.length, jobIds: jobs }
     }
     case 'generate_site': {
-      if((body.generator ?? 'personalized') === 'personalized') { const ai=await aiAvailability(); if(!ai.available) throw new AppError('Connectez Claude ou Codex dans Paramètres → IA avant de générer un site personnalisé. '+(ai.reason ?? ''),400,'AI_REQUIRED') }
-      const jobIds = []
-      for (const id of ids.slice(0, 200)) jobIds.push((await enqueueJob('website.generate', { businessId: id, templateId: body.templateId ?? null, style: body.style ?? null, generator: body.generator ?? 'personalized' }, { priority: 40, maxAttempts: 2 })).job.id)
-      return { queued: jobIds.length, jobIds }
+      return createGenerationBatch(ids,body)
     }
     case 'add_to_campaign':
       if (!body.campaignId) throw new Error('campaignId requis')

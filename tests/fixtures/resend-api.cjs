@@ -3,11 +3,19 @@ const originalFetch = globalThis.fetch
 const hooks = new Map()
 const secret = 'whsec_' + Buffer.from('resend-browser-fixture-signing-key-only').toString('base64')
 const subscriptions = new Map()
+let paymentAttempts = 0
 globalThis.fetch = async function(input, init = {}) {
   const raw = input instanceof Request ? input.url : String(input)
   if(raw.startsWith('https://api.stripe.com/')){
     const path = new URL(raw).pathname, method = init.method || 'GET'
     const authorization = new Headers(init.headers).get('authorization') || ''
+    if(authorization.includes('sk_test_e2e_checkout_only')&&path==='/v1/checkout/sessions'&&method==='POST'){
+      const form=new URLSearchParams(String(init.body))
+      if(form.get('invoice_creation[enabled]')!=='true'||form.get('line_items[0][price_data][unit_amount]')!=='19900')return Response.json({error:{type:'invalid_request_error',message:'Invoice and fixed price required in fixture'}},{status:400})
+      paymentAttempts++
+      if(paymentAttempts===1)return Response.json({error:{type:'invalid_request_error',message:'Your business name must be set before accepting payments. sk_test_hidden_in_error buyer@example.test https://localhost/purchase/private-fixture-token',param:'business_profile[name]'}},{status:400,headers:{'request-id':'req_checkoutfailurefixture'}})
+      return Response.json({id:'cs_checkout_recovered_fixture',url:'https://checkout.stripe.com/c/offline-checkout-fixture'})
+    }
     if(!authorization.includes('sk_test_e2e_host_only'))return Response.json({error:{message:'Offline fixture key required'}},{status:401})
     if(path==='/v1/checkout/sessions'&&method==='POST'){
       const form=new URLSearchParams(String(init.body))

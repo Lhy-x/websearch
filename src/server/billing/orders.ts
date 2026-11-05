@@ -5,10 +5,11 @@ import { randomToken } from '../core/crypto'
 import { lookupPreview, getWebsiteVersion } from '../sites/service'
 import { websiteVersionSchema } from '@/lib/site/bespoke-schema'
 import { billingSetup, publicBase, stripeClient, stripeUrl,stripeCredentials } from './stripe'
-import { getSecret } from '../core/settings'
 import { processHostingStripeEvent } from '../hosting/service'
+import { recordCheckoutFailure,clearCheckoutFailure } from './checkout-errors'
 
 export async function createCheckout(token:string) {
+ const startedAt=new Date().toISOString()
  const setup=await billingSetup()
  if(!setup.ready)throw new AppError(setup.reason,503,'PAYMENT_UNAVAILABLE')
  const preview=await lookupPreview(token)
@@ -35,8 +36,8 @@ export async function createCheckout(token:string) {
   // Check expiry rather than returning an old dead URL when an expiry webhook was missed.
   const [stored]=await db<{stripe_session_id:string}[]>`select stripe_session_id from website_orders where id=${order.id}`
   let session:Stripe.Checkout.Session
-  try{session=await stripe.checkout.sessions.retrieve(stored!.stripe_session_id)}catch{throw new AppError('Impossible de vérifier la session Stripe existante. Vérifiez le compte Stripe configuré.',503)}
-  if(session.status==='open'&&stripeUrl(session.url))return stripeUrl(session.url)!
+  try{session=await stripe.checkout.sessions.retrieve(stored!.stripe_session_id)}catch(error){throw (await recordCheckoutFailure(error,{orderId:order.id,live:setup.live,operation:'retrieve'})).error}
+  if(session.status==='open'&&stripeUrl(session.url)){await clearCheckoutFailure(order.id,setup.live,startedAt);return stripeUrl(session.url)!}
   if(session.status==='expired'){await db`update website_orders set status='EXPIRED' where id=${order.id} and status='OPEN'`;return createCheckout(token)}
   throw new AppError('Paiement en cours de vérification. Consultez votre confirmation.',409)
  }
@@ -49,12 +50,14 @@ export async function createCheckout(token:string) {
   const url=stripeUrl(session.url)
   if(!url)throw new Error('URL Stripe manquante')
   await db`update website_orders set stripe_session_id=${session.id},checkout_url=${url},status=case when status='CREATING' then 'OPEN' else status end where id=${order.id}`
+  await clearCheckoutFailure(order.id,setup.live,startedAt)
   return url
  } catch(error) {
   // Leave CREATING for network retries: the Stripe idempotency key prevents duplicate sessions.
-  if(error instanceof Stripe.errors.StripeAuthenticationError||error instanceof Stripe.errors.StripePermissionError||error instanceof Stripe.errors.StripeInvalidRequestError) await db`update website_orders set status='FAILED' where id=${order.id} and status='CREATING'`
   if(error instanceof AppError)throw error
-  throw new AppError('Stripe ne peut pas ouvrir le paiement pour le moment. Réessayez ou contactez le vendeur.',502,'STRIPE_UNAVAILABLE')
+  const failure=await recordCheckoutFailure(error,{orderId:order.id,live:setup.live,operation:'create'})
+  if(failure.definitive)await db`update website_orders set status='FAILED' where id=${order.id} and status='CREATING'`
+  throw failure.error
  }
 }
 

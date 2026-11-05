@@ -112,6 +112,20 @@ Stripe et preuve de propriété DNS. Voir [HEBERGEMENT-ET-MODE-TEST.md](HEBERGEM
 pour les réglages, le bouton de passage en production et les limites de validation. Les remboursements,
 les avoirs et les contestations se gèrent dans Stripe ; leur synchronisation n’est pas incluse ici.
 
+## Si Stripe refuse l’ouverture du paiement (erreur 502)
+
+La page de commande affiche le refus sans quitter le site et propose **Réessayer le paiement**.
+Dans **Paramètres → Paiement**, choisissez le mode concerné : **Dernier refus Stripe** indique
+la cause, le réglage à vérifier, le détail sécurisé et la référence de requête Stripe.
+**Copier le diagnostic** permet de transmettre ce message sans partager de clé ou de lien privé.
+Le diagnostic est réservé à l’administrateur ; le client ne reçoit pas le détail technique.
+
+Selon le refus, corrigez la clé et ses droits, le profil professionnel du compte Stripe,
+les moyens de paiement ou le taux de TVA du même mode. Une clé enregistrée n’est pas à elle seule
+une preuve que Stripe accepte le paiement. Le relais webhook ne corrige pas une session Checkout refusée.
+Réessayez après la correction : les erreurs temporaires conservent la demande et le prix initiaux
+pour éviter les doublons ; aucun achat n’est débloqué avant le webhook de paiement signé.
+
 ## Supprimer un site
 
 **Supprimer** place le site dans la corbeille et rend immédiatement sa démo indisponible.

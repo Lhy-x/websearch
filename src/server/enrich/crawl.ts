@@ -7,6 +7,7 @@ import { extractPage, type PageExtract } from './html-extract'
 import { checkMx } from './mx'
 import type { PresenceEvidence } from './presence'
 import { checkGooglePresence } from './google-presence'
+import {refreshBusinessSummary} from './summary'
 
 export interface CrawlResult {
   url: string
@@ -19,8 +20,8 @@ export interface CrawlResult {
 }
 
 /**
- * Crawl the business' OWN website (home + up to 3 contact/legal pages) to collect published
- * professional contacts. Emails published on the official site are recorded as SOURCE_CONFIRMED with
+ * Crawl the business' OWN website (home + up to 4 activity/contact pages) to collect public
+ * descriptions, service information and professional contacts. Emails are recorded as SOURCE_CONFIRMED with
  * their source URL; others stay UNVERIFIED. No form is submitted, nothing intrusive is attempted.
  */
 export async function crawlOfficialWebsite(businessId: string, url: string, opts: { allowPrivate?: boolean } = {}): Promise<CrawlResult> {
@@ -44,7 +45,8 @@ export async function crawlOfficialWebsite(businessId: string, url: string, opts
     return result
   }
   const pages: [string, PageExtract][] = [[finalUrl, home]]
-  for (const link of home.contactLinks.slice(0, 3)) {
+  const secondary=[...new Set([...home.activityLinks.slice(0,2),...home.contactLinks])].slice(0,4)
+  for (const link of secondary) {
     try {
       const r = await safeFetch(link, { allowPrivate: opts.allowPrivate, timeoutMs: 10_000 })
       if (r.status < 400) {
@@ -77,6 +79,8 @@ export async function crawlOfficialWebsite(businessId: string, url: string, opts
     await sql()`insert into business_enrichments (business_id, field, value, source, source_url, confidence, verified_at)
       values (${businessId}, 'website_text', ${sql().json({ text, pages: pages.map(([u]) => u) } as never)}, 'crawl', ${finalUrl}, 0.9, now())
       on conflict (business_id, field, source) do update set value = excluded.value, source_url = excluded.source_url, verified_at = now(), retrieved_at = now()`
+  const content=pages.filter(([url])=>!/(?:mentions|legal|privacy|confidentialite|cookies|conditions-generales)/i.test(new URL(url).pathname)).map(([url,page])=>({url,title:page.title,blocks:page.publicBlocks}))
+  await sql()`insert into business_enrichments(business_id,field,value,source,source_url,confidence,verified_at) values(${businessId},'website_content',${sql().json({pages:content})},'crawl',${finalUrl},0.9,now()) on conflict(business_id,field,source) do update set value=excluded.value,source_url=excluded.source_url,retrieved_at=now(),verified_at=now()`
   return result
 }
 
@@ -101,7 +105,7 @@ export async function verifyEmails(businessId: string): Promise<{ checked: numbe
  * Full enrichment of one business: crawl own website if any, verify emails, record a live
  * website-presence observation, recompute status & score.
  */
-export async function enrichBusiness(businessId: string, opts: { allowPrivate?: boolean } = {}) {
+export async function enrichBusiness(businessId: string, opts: { allowPrivate?: boolean;allowAi?:boolean } = {}) {
   const db = sql()
   const [b] = await db<{ website_url: string | null }[]>`select website_url from businesses where id = ${businessId}`
   if (!b) throw new Error('Prospect introuvable')
@@ -115,7 +119,7 @@ export async function enrichBusiness(businessId: string, opts: { allowPrivate?: 
   }
   const websites = await db<{ normalized_value: string }[]>`
     select normalized_value from business_contacts where business_id = ${businessId} and kind = 'website' and status <> 'INVALID'`
-  const own = websites.map((w) => w.normalized_value).filter((w) => !isThirdPartyHost(w))
+  const own = [...new Set([...websites.map(w=>w.normalized_value),...(b.website_url?[b.website_url]:[])])].filter(w=>!isThirdPartyHost(w))
   const crawls: CrawlResult[] = []
   for (const url of own.slice(0, 2)) {
     const r = await crawlOfficialWebsite(businessId, url, opts)
@@ -135,5 +139,6 @@ export async function enrichBusiness(businessId: string, opts: { allowPrivate?: 
                                                where not (e->>'source' = any(${replaced})) and e->>'source' <> 'crawl'), '[]'::jsonb) || ${db.json(fresh as never)}
            where id = ${businessId}`
   const r = await recomputeBusiness(businessId)
-  return { crawls, emails, google: googleEvidence ? googleEvidence.finding : googleError ? `erreur : ${googleError}` : 'non configuré ou non trouvé', presence: r?.presence, score: r?.score }
+  const summary=await refreshBusinessSummary(businessId,{allowAi:opts.allowAi!==false})
+  return { crawls, emails,summary, google: googleEvidence ? googleEvidence.finding : googleError ? `erreur : ${googleError}` : 'non configuré ou non trouvé', presence: r?.presence, score: r?.score }
 }

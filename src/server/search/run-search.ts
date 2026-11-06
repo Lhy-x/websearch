@@ -10,6 +10,7 @@ import type { PresenceEvidence } from '../enrich/presence'
 import { clusterRecords, matchBusinesses, type MatchCandidate } from './dedup'
 import { geocode } from './geocode'
 import type { SearchParams } from './params'
+import {refreshBusinessSummary} from '../enrich/summary'
 
 type Log = (msg: string, progress?: number) => Promise<void>
 
@@ -160,6 +161,7 @@ export async function persistCluster(cluster: RawPlace[]): Promise<{ id: string;
              values (${r.id}, ${id}, ${r.score}, ${db.json(r.reasons as never)}, 'PENDING') on conflict do nothing`
   }
   await recomputeBusiness(id)
+  await refreshBusinessSummary(id)
   return { id, created, pendingMerges: existing.review.length }
 }
 

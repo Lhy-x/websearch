@@ -11,7 +11,7 @@ function terms(text:string){return [...new Set((fold(text).match(/[a-z]{4,}/g)??
 
 export function checkPersonalization(html:string,direction:ArtDirection,fingerprint?:DesignFingerprint):QualityIssue[]{
  const issues:QualityIssue[]=[]
- const rich=direction.evidence.filter(item=>['publicDetails','officialText'].includes(item.id)||item.id.startsWith('detail.'))
+ const rich=direction.evidence.filter(item=>['publicDetails','officialText'].includes(item.id)||item.id.startsWith('detail.')||item.id.startsWith('recap.'))
  const content=fold(visibleText(html))
  if(rich.length&&rich.every(item=>{const words=terms(item.quote);return words.length>=2&&words.filter(word=>content.includes(word)).length<Math.min(2,words.length)}))issues.push({code:'design_facts_unused',severity:'critical',message:'La rédaction ignore les informations distinctives citées dans le plan. Reprends explicitement au moins un détail public validé (prestations ou particularités publiées), au lieu de rester sur un texte générique du métier. N’invente rien.'})
  const css=parse(html).querySelectorAll('style').map(node=>node.textContent).join(' ')

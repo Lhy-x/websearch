@@ -46,6 +46,7 @@ export function buildBespokePrompt(f: BusinessFacts, opts: { styleHint?: string 
     presence_web: f.websiteStatus,
     sources_des_donnees: f.sources ?? [],
     informations_publiques_validees: f.publicDetails??null,
+    recapitulatif_source: f.publicRecap?{activite:f.publicRecap.activity,avantages_annonces:f.publicRecap.advantages,couverture:f.publicRecap.coverage}:null,
     details_complementaires_sources:f.verifiedDetails??[],
   }
   return `Conçois le site de ce commerce.
@@ -53,7 +54,7 @@ export function buildBespokePrompt(f: BusinessFacts, opts: { styleHint?: string 
 DOSSIER DE FAITS VÉRIFIÉS (seules informations factuelles utilisables) :
 ${JSON.stringify(dossier, null, 2)}
 
-Construis les textes et l’ordre des informations à partir des faits les plus distinctifs de cette entreprise. Une information absente reste absente : pas de faux chiffres ni de cartes de prestations inventées pour remplir la page.
+Construis les textes et l’ordre des informations à partir des faits les plus distinctifs de cette entreprise. Le récapitulatif cite les sources : ses avantages sont des particularités annoncées, jamais une évaluation indépendante, une certification ou une promesse de qualité. Conserve les réserves des sources publiques « à confirmer ». Une information absente reste absente : pas de faux chiffres ni de cartes de prestations inventées pour remplir la page.
 ${opts.styleHint ? `Orientation de style demandée par l'utilisateur : ${opts.styleHint}.` : 'Aucune orientation de style imposée : propose un parti pris propre à ce commerce et à son quartier/métier.'}
 ${opts.media?.length ? `Médias fournis (licence vérifiée), utilisables tels quels : ${JSON.stringify(opts.media)}` : 'Aucun média fourni : pas de photo.'}
 ${opts.customInstructions ? `Consignes de l'utilisateur : ${opts.customInstructions}` : ''}

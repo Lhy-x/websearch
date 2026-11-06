@@ -21,6 +21,26 @@ L’accueil propose la prochaine action selon les données et la configuration d
 
 ## Créer et partager
 
+La recherche prépare un récapitulatif par entreprise : **ce qu’elle fait** et **ses avantages
+repérés**, visibles dans les résultats. L’enrichissement automatique complète ces informations
+en arrière-plan, y compris pour les entreprises déjà présentes lors d’une nouvelle recherche.
+La liste s’actualise pendant le traitement. « Voir le récapitulatif » ouvre la fiche et les sources.
+
+Dans la fiche, **Enrichir l’activité et les avantages** (ou Actions → Enrichir maintenant)
+relit le site officiel : accueil, prestations et engagements, dans une limite de cinq pages.
+Les indications OpenStreetMap et le brief public peuvent aussi documenter la fiche. Les notes
+CRM privées sont exclues. Sans source détaillée, la fiche reste explicitement partielle ; aucun
+avantage, prix ou jugement de qualité n’est inventé. Les avantages sont ceux annoncés dans les
+sources, pas une évaluation indépendante.
+
+La recherche et son enrichissement automatique préparent directement les passages collectés,
+sans consommer d’appels IA. Avec le bouton d’enrichissement, si une IA est connectée et le budget
+disponible, elle peut sélectionner des extraits courts dont la présence exacte dans la source
+est contrôlée. Le récapitulatif reste disponible sans IA ou lorsque son quota est atteint.
+Ses sources et particularités sont transmises
+au générateur de sites. Aucune nouvelle clé n’est nécessaire. Pour d’anciens prospects, relancez
+la recherche ou l’enrichissement pour créer leur récapitulatif.
+
 1. Trouver une entreprise, ou importer une liste dans Mes prospects.
 2. Vérifier sa fiche et choisir cette entreprise dans le générateur.
 3. Cliquer sur « Créer le site sur mesure ». L’avancement s’affiche, puis l’éditeur s’ouvre

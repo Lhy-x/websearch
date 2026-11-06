@@ -14,14 +14,19 @@ Erreurs : `{ "error": string, "code"?: string, "issues"?: [{ path, message }] }`
 | Méthode | Route | Description |
 |---|---|---|
 | POST | `/api/search/runs` | Lance une recherche (job) → `{ runId, jobId }`. Corps : `searchParamsSchema` (`src/server/search/params.ts`) |
-| GET | `/api/search/runs` · `/api/search/runs/:id` | Historique ; état, progression, journaux, workers actifs |
+| GET | `/api/search/runs` · `/api/search/runs/:id` | Historique ; état, progression, journaux, workers actifs. Le détail inclut `enrichment: { active, failed, completed }` pour les lots liés à la recherche |
 | GET/POST | `/api/saved-searches` · DELETE `/:id` | Recherches enregistrées (+ `cron` optionnel) |
 | GET | `/api/prospects?…` | Liste filtrée/paginée (`listFiltersSchema`) |
+| GET | `/api/prospects/:id/summary` | Récapitulatif sourcé (`summary`) et présence d’un enrichissement actif (`enriching`). Session administrateur requise |
 | GET | `/api/prospects/export?…` | CSV (`;`, UTF-8 BOM, protégé contre l'injection de formules) |
 | POST | `/api/prospects/bulk` | `{ ids[], action: enrich|generate_site|add_to_campaign|tag|untag|archive|unarchive|set_status|do_not_contact|rescore|delete }` |
 | GET/PATCH/POST | `/api/prospects/:id` | Détail ; édition ; actions (`enrich`, `audit`, `generate_site`, `proposal`, `set_status`, `confirm_no_website`, `add_contact`, `contact_status`, `note`, `task`, `task_done`, `opportunity`, `opportunity_update`, `do_not_contact`, `merge`, `reject_merge`, `delete`) |
 | POST | `/api/import/preview` (multipart) · `/api/import/commit` | Analyse + validation à blanc ; import (job) |
 | POST | `/api/qualification/rescore` | Recalcule tous les scores |
+
+Les lignes de `/api/prospects` incluent `summary` (activité, avantages annoncés, extraits,
+sources, couverture et date) et `enriching`. `POST /api/prospects/:id` avec
+`{ "action": "enrich" }` actualise aussi ce récapitulatif dans le traitement en arrière-plan.
 
 ## Sites
 | Méthode | Route | Description |

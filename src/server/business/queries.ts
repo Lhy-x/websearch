@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { sql } from '../core/db'
+import type {BusinessSummary} from '@/lib/business-summary'
 
 export const listFiltersSchema = z.object({
   q: z.string().trim().max(200).optional(),
@@ -46,6 +47,8 @@ export interface BusinessRow {
   priority: string | null
   tags: string[]
   sources: string[]
+  summary: BusinessSummary | null
+  enriching: boolean
   sites: number
   created_at: Date
 }
@@ -87,6 +90,8 @@ export async function listBusinesses(f: ListFilters): Promise<{ rows: BusinessRo
   const rows = await db<BusinessRow[]>`
     select b.id, b.name, b.sector, b.city, b.postcode, b.address, b.country, b.lat, b.lon, b.phone, b.email, b.email_status, b.website_url,
       b.web_presence_status, b.pipeline_status, b.score, b.data_confidence, b.priority, b.tags, b.created_at,
+      (select e.value from business_enrichments e where e.business_id=b.id and e.field='business_summary' and e.source='summary') summary,
+      exists(select 1 from automation_jobs j where j.type='business.enrich' and j.status in ('PENDING','RUNNING','RETRYING') and (j.payload->'businessIds') ? b.id::text) enriching,
       coalesce((select array_agg(distinct s.source) from business_sources s where s.business_id = b.id), '{}') sources,
       (select count(*)::int from generated_websites g where g.business_id = b.id and g.deleted_at is null and g.status = 'READY') sites
     from businesses b where ${w}

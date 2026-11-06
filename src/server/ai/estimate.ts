@@ -5,6 +5,7 @@ import { callsToday } from './client'
 
 /** Typical token footprint per operation (measured on our prompts; conservative). */
 const FOOTPRINT: Record<TaskKind, { input: number; output: number }> = {
+  business_summary:{input:2500,output:500},
   site_direction:{input:5000,output:3500},
   site_generation: { input: 2200, output: 2600 },
   site_bespoke: { input: 9000, output: 20000 },

@@ -1,7 +1,10 @@
 'use client'
 import Link from 'next/link'
 import { ArrowUpRight, Globe, Mail, Phone } from 'lucide-react'
-import { useState } from 'react'
+import { useState,useEffect } from 'react'
+import {useRouter} from 'next/navigation'
+import type {BusinessSummary} from '@/lib/business-summary'
+import {SummaryPreview} from './business-summary'
 import { useSelection } from './selection'
 import { EmailBadge, PipelineBadge, PresenceBadge, ScorePill } from './badges'
 import { Table, Td, Th } from './ui/primitives'
@@ -25,9 +28,13 @@ export interface ProspectRow {
   priority: string | null
   sources: string[]
   sites: number
+  summary?:BusinessSummary|null
+  enriching?:boolean
 }
 
-export function ProspectTable({ rows }: { rows: ProspectRow[] }) {
+export function ProspectTable({ rows,live=true }: { rows: ProspectRow[];live?:boolean }) {
+  const router=useRouter(),enriching=rows.some(row=>row.enriching)
+  useEffect(()=>{if(!live||!enriching)return;const interval=setInterval(()=>router.refresh(),4500);return()=>clearInterval(interval)},[live,enriching,router])
   const [detailed,setDetailed]=useState(false)
   const sel = useSelection()
   const all = rows.length > 0 && rows.every((r) => sel.has(r.id))
@@ -52,6 +59,9 @@ export function ProspectTable({ rows }: { rows: ProspectRow[] }) {
             <Td className="min-w-[220px]">
               <Link href={`/prospects/${r.id}`} className="font-medium hover:text-primary">{r.name}</Link>
               <div className="text-xs text-muted">{[r.sector ? SECTOR_BY_ID.get(r.sector)?.label ?? r.sector : null, [r.postcode, r.city].filter(Boolean).join(' ')].filter(Boolean).join(' · ')}</div>
+              <SummaryPreview summary={r.summary}/>
+              {r.enriching?<p role="status" className="mt-1 text-[11px] text-primary">Activité et avantages en cours d’enrichissement…</p>:null}
+              <Link href={`/prospects/${r.id}#recap`} className="mt-1 inline-block text-[11px] font-medium text-primary">Voir le récapitulatif</Link>
             </Td>
             <Td>
               <PresenceBadge status={r.web_presence_status} />

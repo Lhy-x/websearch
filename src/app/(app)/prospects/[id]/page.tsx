@@ -15,6 +15,8 @@ import { ProspectActions, ContactActions, NotesTasks, Opportunities, MergeReview
 import { ProposalViewer } from './proposal-viewer'
 import { ProspectCreativeBrief } from '@/components/prospect-creative-brief'
 import { sql } from '@/server/core/db'
+import {getBusinessSummary} from '@/server/enrich/summary'
+import {BusinessSummaryCard} from '@/components/business-summary'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +27,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
   const settings = await getSettings()
   const [brief]=await sql()`select value from business_enrichments where business_id=${id} and field='site_brief' and source='manual'`
   const previewBase=await getPreviewBaseUrl(settings)
+  const summary=await getBusinessSummary(id)
   const b = d.business as Record<string, unknown> & { id: string; name: string; sector: string | null; city: string | null; postcode: string | null; address: string | null; country: string | null; phone: string | null; email: string | null; email_status: string; website_url: string | null; web_presence_status: string; pipeline_status: string; score: number | null; data_confidence: number | null; priority: string | null; tags: string[]; siret: string | null; naf_code: string | null; lat: number | null; lon: number | null; do_not_contact: boolean; web_presence_evidence: { source: string; at: string; finding: string; live?: boolean; detail?: string }[]; merged_into: string | null; created_at: Date; enriched_at: Date | null }
   const latestScore = d.scores[0] as { score: number; confidence: number; priority: string; reasons: { label: string; points: number }[]; created_at: Date } | undefined
   return (
@@ -46,7 +49,8 @@ export default async function ProspectPage({ params }: { params: Promise<{ id: s
       {d.merges.length ? <MergeReview id={b.id} merges={d.merges as never} /> : null}
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <div className="space-y-6 xl:col-span-2">
+        <div className="min-w-0 space-y-6 xl:col-span-2">
+          <BusinessSummaryCard id={id} initial={summary}/>
           <ProspectCreativeBrief id={id} initial={brief?.value??{}}/>
           <Card>
             <CardHeader title="Identité & coordonnées" description="Chaque valeur indique sa source et son statut de vérification." actions={<EditProspect business={{ id: b.id, name: b.name, sector: b.sector, address: b.address, postcode: b.postcode, city: b.city, phone: b.phone, tags: b.tags }} />} />

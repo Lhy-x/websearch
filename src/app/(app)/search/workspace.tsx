@@ -21,6 +21,7 @@ interface RunInfo {
   run: { id: string; status: string; params: Record<string, unknown> & { resolvedLat?: number; resolvedLon?: number; radiusKm?: number }; total_found: number; new_count: number; merge_pending_count: number; source_reports: { source?: string; status?: string; count?: number; message?: string; ms?: number }[]; error: string | null; job_status: string | null; progress: number | null; progress_message: string | null; job_error: string | null }
   logs: { level: string; message: string; created_at: string }[]
   workersOnline: number
+  enrichment: { active: number; failed: number; completed: number }
 }
 
 type Form = {
@@ -63,9 +64,19 @@ export function SearchWorkspace({ defaults, connectors }: { defaults: { country:
     queryKey: ['run', runId],
     queryFn: () => api<RunInfo>(`/api/search/runs/${runId}`),
     enabled: !!runId,
-    refetchInterval: (q) => (q.state.data && ['COMPLETED', 'FAILED', 'CANCELLED'].includes(q.state.data.run.status) ? false : 1500),
+    refetchInterval: (q) => {
+      const info=q.state.data
+      return !info||!['COMPLETED','FAILED','CANCELLED'].includes(info.run.status)||['PENDING','RUNNING','RETRYING'].includes(info.run.job_status??'')||info.enrichment.active>0?1500:false
+    },
   })
   const run = runQ.data?.run
+  const enriching=!!runQ.data?.enrichment.active||['PENDING','RUNNING','RETRYING'].includes(run?.job_status??'')
+  useEffect(()=>{
+    if(run?.status!=='COMPLETED')return
+    void qc.invalidateQueries({queryKey:['results']})
+    void qc.invalidateQueries({queryKey:['results-map']})
+    void qc.invalidateQueries({queryKey:['runs']})
+  },[qc,runId,run?.status,run?.job_status,runQ.data?.enrichment.active])
   // restore the form from the run parameters (shareable URL)
   useEffect(() => {
     if (!run) return
@@ -98,11 +109,13 @@ export function SearchWorkspace({ defaults, connectors }: { defaults: { country:
     queryKey: ['results', filterQs],
     queryFn: () => api<{ rows: (ProspectRow & { lat: number | null; lon: number | null })[]; total: number }>(`/api/prospects?${filterQs}`),
     enabled: run?.status === 'COMPLETED',
+    refetchInterval:q=>enriching||q.state.data?.rows.some(row=>row.enriching)?3000:false,
   })
   const mapQ = useQuery({
     queryKey: ['results-map', filterQs.replace(/page=\d+/, '')],
     queryFn: () => api<{ rows: (ProspectRow & { lat: number | null; lon: number | null })[]; total: number }>(`/api/prospects?${filterQs.replace(/page=\d+&pageSize=50/, 'page=1&pageSize=500')}`),
     enabled: run?.status === 'COMPLETED' && view === 'map',
+    refetchInterval:q=>enriching||q.state.data?.rows.some(row=>row.enriching)?3000:false,
   })
   const sel = useSelection()
 
@@ -211,6 +224,7 @@ export function SearchWorkspace({ defaults, connectors }: { defaults: { country:
               }
             />
             <SourceReports reports={run.source_reports} />
+            <div className="border-b border-border px-5 py-3 text-xs leading-6 text-muted" role="status">{enriching?<span className="flex items-center gap-2"><Loader2 className="size-4 shrink-0 animate-spin"/>Activités et avantages : lecture des sources en cours. Les récapitulatifs se complètent automatiquement.</span>:runQ.data?.enrichment.failed?<span>Certains enrichissements ont échoué. Les récapitulatifs disponibles restent visibles ; ouvrez une fiche et cliquez sur « Enrichir » pour réessayer.</span>:<span>Chaque fiche résume l’activité et les avantages documentés. « Voir le récapitulatif » affiche les extraits et leurs sources.</span>}</div>
             {view === 'map' ? (
               <div className="p-4">
                 <ProspectMap
@@ -223,7 +237,7 @@ export function SearchWorkspace({ defaults, connectors }: { defaults: { country:
               <div className="space-y-2 p-5">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
             ) : results.isError ? (<div className="p-6"><Notice tone="danger" title="Les résultats ne sont pas disponibles"><Button size="sm" variant="outline" onClick={()=>results.refetch()}>Réessayer</Button></Notice></div>) : results.data?.rows.length ? (
               <>
-                <ProspectTable rows={results.data.rows} />
+                <ProspectTable rows={results.data.rows} live={false} />
                 <Pager page={page} total={results.data.total} pageSize={50} onPage={setPage} />
               </>
             ) : (

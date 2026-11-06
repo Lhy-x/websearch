@@ -13,6 +13,8 @@ export interface PageExtract {
   socials: string[]
   internalLinks: string[]
   contactLinks: string[]
+  activityLinks: string[]
+  publicBlocks: {text:string;heading:string|null;advantage:boolean}[]
   copyrightYear: number | null
   textLength: number
   /** readable page text (scripts, styles, navigation and footer removed), for the facts dossier */
@@ -64,10 +66,36 @@ export function extractPage(html: string, pageUrl: string): PageExtract {
     socials,
     internalLinks: internal.slice(0, 200),
     contactLinks: internal.filter((u) => /contact|mentions|legal|a-propos|about|qui-sommes/i.test(u)).slice(0, 4),
+    activityLinks:internal.filter(u=>/prestations|services|savoir-faire|produits|specialit|menu|notre-carte|a-propos|about|qui-sommes|engagements/i.test(u)&&!/[?&](?:action|add|delete|cart|logout)=/i.test(u)).slice(0,6),
+    publicBlocks:extractPublicBlocks(html),
     copyrightYear: years.length ? Math.max(...years) : null,
     textLength: text.length,
     mainText: readableText(html),
   }
+}
+
+/** Original public passages, preserved for citation. No navigation, legal text or hidden HTML. */
+export function extractPublicBlocks(html:string){
+ const root=parse(html.replace(/>(?=<)/g,'> '))
+ root.querySelectorAll('script,style,noscript,svg,nav,footer,form,iframe,template,head,[hidden],[aria-hidden="true"],[id*="cookie"],[class*="cookie"],[id*="consent"]').forEach(node=>node.remove())
+ const blocks:{text:string;heading:string|null;advantage:boolean}[]=[]
+ const seen=new Set<string>()
+ const headings=new Map<object,string>()
+ for(const node of root.querySelectorAll('h2,h3,p,li')){
+  const text=node.textContent.replace(/\s+/g,' ').trim()
+  const scope=node.closest('section,article')??root
+  if(node.tagName==='H2'||node.tagName==='H3'){headings.set(scope,text.slice(0,160));continue}
+  if(text.length<12||text.length>1500||seen.has(text)||/politique de confidentialit|cookies|tous droits r[eé]serv[eé]s|siret\s*[:\d]|mentions l[eé]gales/i.test(text))continue
+  seen.add(text)
+  const heading=headings.get(scope)??null
+  const advantage=!!heading&&/pourquoi|atouts|avantages|engagements|diff[eé]rence|choisir|points forts/i.test(heading)
+  const sentences=text.match(/[^.!?]+(?:[.!?]+|$)/g)??[text]
+  let excerpt=''
+  for(const sentence of sentences){if((excerpt+sentence).trim().length>480)break;excerpt+=sentence}
+  if(excerpt.trim().length>=12)blocks.push({text:excerpt.trim(),heading,advantage})
+  if(blocks.length>=40)break
+ }
+ return blocks
 }
 
 /** Visible text of a page without scripts/styles/nav/footer, whitespace-collapsed, max 6 000 chars. */

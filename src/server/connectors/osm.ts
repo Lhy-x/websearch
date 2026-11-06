@@ -58,7 +58,7 @@ export function mapOsm(el: OsmEl, sectorHint: string | null): RawPlace | null {
     socials: [t['contact:facebook'], t['contact:instagram']].filter((x): x is string => !!x),
     operatingStatus: t.disused || t['disused:shop'] ? 'closed' : 'open',
     confidence: 0.7,
-    raw: { opening_hours: t.opening_hours ?? null, tags_checked: Object.keys(t).length },
+    raw: { opening_hours: t.opening_hours ?? null, tags_checked: Object.keys(t).length,description:t['description:fr']??t.description??null,capabilities:Object.fromEntries(['wheelchair','delivery','takeaway','organic','diet:vegan','diet:vegetarian','internet_access','reservation'].filter(key=>t[key]).map(key=>[key,t[key]!])) },
   }
 }
 

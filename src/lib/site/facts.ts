@@ -1,4 +1,5 @@
-/** Verified facts about a business — the ONLY information a generated site/proposal may state. */
+import type {BusinessSummary} from '@/lib/business-summary'
+/** Sourced facts about a business — the ONLY information a generated site/proposal may state. */
 export interface BusinessFacts {
   businessId: string
   name: string
@@ -26,6 +27,7 @@ export interface BusinessFacts {
   ownSite?: { url: string | null; title: string | null; description: string | null; text: string | null } | null
   sources?: string[]
   publicDetails?: string | null
+  publicRecap?: BusinessSummary | null
   artDirection?: string | null
   verifiedDetails?: { field:string; value:unknown; source:string; url:string|null }[]
 }

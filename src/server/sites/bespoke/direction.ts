@@ -5,10 +5,15 @@ import {AppError} from '../../core/errors'
 import {sql} from '../../core/db'
 import type {RecentDesign} from './diversity'
 import {describeDesign} from './diversity'
+import {findForbiddenClaim} from '@/lib/site/schema'
 
 const fold=(s:string)=>s.normalize('NFKC').toLocaleLowerCase('fr').replace(/\s+/g,' ').trim()
 export function directionFacts(f:BusinessFacts){
  const fields:Record<string,string|null|undefined>={name:f.name,activity:f.sectorLabel,category:f.categoryDetail,city:f.city,address:f.address,publicDetails:f.publicDetails,officialText:f.ownSite?.text?.slice(0,12000),openingHours:f.openingHours?.lines.join(' · '),creationYear:f.creationYear?String(f.creationYear):null}
+ if(f.publicRecap){
+  const claims=[['activity',f.publicRecap.activity] as const,...f.publicRecap.advantages.map((item,index)=>[`advantage.${index}`,item] as const)]
+  for(const [id,item] of claims)if(item.evidence.some(source=>source.kind!=='record')&&!findForbiddenClaim(item.text))fields[`recap.${id}`]=item.text
+ }
  for(const [i,detail] of (f.verifiedDetails??[]).entries())fields[`detail.${i}`]=`${detail.field} : ${JSON.stringify(detail.value)}`
  return Object.fromEntries(Object.entries(fields).filter((entry):entry is [string,string]=>typeof entry[1]==='string'&&entry[1].trim().length>1))
 }
@@ -23,7 +28,7 @@ export function validateArtDirection(value:unknown,facts:BusinessFacts):ArtDirec
  const response=directionResponseSchema.parse(value),known=directionFacts(facts)
  const evidence=response.evidence.filter(item=>known[item.id]&&fold(known[item.id]!).includes(fold(item.quote)))
  if(new Set(evidence.map(item=>item.id)).size<Math.min(3,Object.keys(known).length))throw new AppError('Le plan doit justifier ses choix par trois faits distincts et des citations exactes du dossier.',422,'DIRECTION_FACTS')
- const rich=Object.keys(known).filter(key=>['publicDetails','officialText'].includes(key)||key.startsWith('detail.'))
+ const rich=Object.keys(known).filter(key=>['publicDetails','officialText'].includes(key)||key.startsWith('detail.')||key.startsWith('recap.'))
  if(rich.length&&!evidence.some(item=>rich.includes(item.id)))throw new AppError('Le plan ignore les détails propres à cette entreprise : utilisez son brief, son texte officiel ou ses enrichissements validés.',422,'DIRECTION_FACTS')
  const selected=response.candidates[response.selected]!
  if(response.candidates.some((candidate,index)=>index!==response.selected&&conceptsTooClose(candidate,selected)))throw new AppError('Les pistes créatives reprennent la même composition. Proposez trois architectures distinctes.',422,'DIRECTION_VARIANTS')

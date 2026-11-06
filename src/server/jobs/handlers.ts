@@ -82,10 +82,10 @@ export const HANDLERS: Record<JobType, Handler> = {
         const diff = { appeared: res.businessIds.filter((id) => !before.has(id)).length, disappeared: [...before].filter((id) => !now.has(id)).length }
         await db`update search_runs set source_reports = source_reports || ${db.json([{ diff }] as never)} where id = ${runId}`
       }
-      if (input.autoEnrich && res.newBusinessIds.length) {
+      if (input.autoEnrich && res.businessIds.length) {
         const s = await getSettings()
-        for (let i = 0; i < res.newBusinessIds.length; i += s.automation.enrichBatchSize)
-          await enqueueJob('business.enrich', { businessIds: res.newBusinessIds.slice(i, i + s.automation.enrichBatchSize) }, { priority: 120, idempotencyKey: `enrich:${runId}:${i}` })
+        for (let i = 0; i < res.businessIds.length; i += s.automation.enrichBatchSize)
+          await enqueueJob('business.enrich', { businessIds: res.businessIds.slice(i, i + s.automation.enrichBatchSize),searchRunId:runId,aiSummary:false }, { priority: 120, idempotencyKey: `enrich:${runId}:${i}` })
       }
       return { runId, total: res.totalFound, new: res.newCount, mergePending: res.mergePending, reports: res.reports }
     } catch (e) {
@@ -95,13 +95,14 @@ export const HANDLERS: Record<JobType, Handler> = {
   },
 
   async 'business.enrich'(p, ctx) {
-    const { businessIds, audit } = z.object({ businessIds: z.array(uuid).min(1).max(500), audit: z.boolean().default(true) }).parse(p)
+    const { businessIds, audit,aiSummary } = z.object({ businessIds: z.array(uuid).min(1).max(500), audit: z.boolean().default(true),aiSummary:z.boolean().default(true) }).parse(p)
     const out = { enriched: 0, failed: 0, auditsQueued: 0 }
     for (let i = 0; i < businessIds.length; i++) {
       if (!(await ctx.isActive())) break
       const id = businessIds[i]!
       try {
-        const r = await enrichBusiness(id)
+        const r = await enrichBusiness(id,{allowAi:aiSummary})
+        await ctx.log(`Activité et avantages : ${r.summary.coverage==='limited'?'informations publiques encore limitées':r.summary.advantages.length+' avantage(s) sourcé(s)'}`)
         out.enriched++
         if (audit && r.crawls.some((c) => c.reachable || c.status !== null || c.error)) {
           const [b] = await sql()<{ website_url: string | null }[]>`select website_url from businesses where id = ${id}`

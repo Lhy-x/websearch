@@ -12,6 +12,7 @@ import { upsertContact } from '@/server/business/contacts'
 import { mergeBusinesses } from '@/server/business/merge'
 import { suppress } from '@/server/email/suppression'
 import { PIPELINE } from '@/lib/labels'
+import {refreshBusinessSummary} from '@/server/enrich/summary'
 
 export const GET = adminRoute(async ({ params }) => {
   const d = await getBusinessDetail(params.id)
@@ -42,6 +43,7 @@ export const PATCH = adminRoute(async ({ params, body }) => {
   await db`update businesses set ${db(fields as Record<string, never>)} where id = ${params.id}`
   await auditLog({ action: 'business.edit', entityType: 'business', entityId: params.id, actor: 'admin', data: Object.keys(fields) })
   await recomputeBusiness(params.id)
+  await refreshBusinessSummary(params.id)
   return { ok: true }
 }, patchSchema)
 
@@ -74,6 +76,7 @@ export const POST = adminRoute(async ({ params, body }) => {
     case 'site_brief':
       await db`insert into business_enrichments(business_id,field,value,source,verified_at,confidence) values(${id},'site_brief',${db.json({publicDetails:a.publicDetails,artDirection:a.artDirection})},'manual',now(),1) on conflict(business_id,field,source) do update set value=excluded.value,verified_at=now(),retrieved_at=now()`
       await auditLog({action:'business.creative_brief',entityType:'business',entityId:id,actor:'admin'})
+      await refreshBusinessSummary(id)
       return {ok:true}
     case 'enrich':
       return { jobId: (await enqueueJob('business.enrich', { businessIds: [id] }, { priority: 30 })).job.id }

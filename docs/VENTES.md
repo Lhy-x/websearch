@@ -126,6 +126,16 @@ une preuve que Stripe accepte le paiement. Le relais webhook ne corrige pas une 
 Réessayez après la correction : les erreurs temporaires conservent la demande et le prix initiaux
 pour éviter les doublons ; aucun achat n’est débloqué avant le webhook de paiement signé.
 
+## Espace client : pas de mot de passe
+
+Après le paiement, le client arrive sur son espace privé (`/purchase/…`). Ce lien secret lui sert d’accès : il n’a aucun mot de passe à créer.
+
+- En production, il reçoit aussi ce lien par email dès que Stripe confirme le paiement.
+- S’il le perd, il va sur **`/client`** (« Retrouver mon espace », lien en bas de la page d’achat et de l’espace client), saisit l’email utilisé lors du paiement Stripe et reçoit à nouveau ses liens.
+- La réponse est la même que l’adresse soit connue ou non, et les demandes sont limitées (10 par adresse IP toutes les 15 minutes, 3 emails par adresse et par heure).
+- En mode test, aucun email ne part : les liens des commandes de test s’affichent directement sur la page `/client`.
+- Les emails partent avec le fournisseur et l’expéditeur configurés dans **Paramètres → Prospection**. Sans eux, le client ne reçoit rien : configurez-les avant de vendre réellement.
+
 ## Supprimer un site
 
 **Supprimer** place le site dans la corbeille et rend immédiatement sa démo indisponible.

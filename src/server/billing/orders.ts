@@ -7,6 +7,7 @@ import { websiteVersionSchema } from '@/lib/site/bespoke-schema'
 import { billingSetup, publicBase, stripeClient, stripeUrl,stripeCredentials,taxRateProblem } from './stripe'
 import { processHostingStripeEvent } from '../hosting/service'
 import { recordCheckoutFailure,recordCheckoutProblem,clearCheckoutFailure } from './checkout-errors'
+import { enqueueCustomerAccessEmail } from './customer-access'
 
 export async function createCheckout(token:string) {
  const startedAt=new Date().toISOString()
@@ -85,7 +86,7 @@ export async function processStripeEvent(event:Stripe.Event) {
  const allowed=['checkout.session.completed','checkout.session.async_payment_succeeded','checkout.session.async_payment_failed','checkout.session.expired','invoice.paid','invoice.finalized']
  if(!allowed.includes(event.type))return {ignored:true}
  const [lock]=await sql()<{website_id:string|null}[]>`select website_id from website_orders where id=${orderId}`
- return sql().begin(async tx=>{
+ const result=await sql().begin(async tx=>{
   if(lock?.website_id)await tx`select id from generated_websites where id=${lock.website_id} for update`
   const [order]=await tx<{id:string;website_id:string|null;business_id:string|null;business_name:string;amount_cents:number;currency:string;livemode:boolean;status:string;stripe_session_id:string|null}[]>`select * from website_orders where id=${orderId} for update`
   if(!order)return {ignored:true}
@@ -109,6 +110,10 @@ export async function processStripeEvent(event:Stripe.Event) {
   }
   return {status}
  })
+ // After commit, so the job finds the order paid. Test payments go to the sandbox provider and send nothing.
+ const email=(obj.customer_details as {email?:string}|null)?.email
+ if('status' in result&&result.status==='PAID'&&email)await enqueueCustomerAccessEmail(email,'paid',orderId).catch(()=>undefined)
+ return result
 }
 export async function verifiedStripeEvent(raw:string,signature:string) {
  let live=false

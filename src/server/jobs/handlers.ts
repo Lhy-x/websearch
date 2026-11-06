@@ -17,6 +17,7 @@ import { syncImap } from '../email/imap'
 import { enqueueJob, type Job } from './queue'
 import { runBackup } from './backup'
 import { reconcileHosting,checkHostingDomain,sweepHosting } from '../hosting/service'
+import { deliverCustomerAccess } from '../billing/customer-access'
 import { getObject } from '../core/storage'
 import { importCommitSchema, mapImportRows, parseImportFile } from '../connectors/import'
 import { clusterRecords } from '../search/dedup'
@@ -36,6 +37,7 @@ export const JOB_TYPES = {
   'hosting.reconcile':'Publication / suspension d’un site client',
   'hosting.domain_check':'Vérification du domaine client',
   'hosting.sweep':'Vérification des abonnements',
+  'customer.access_email':'Envoi du lien de l’espace client',
   'search.run': 'Recherche de prospects',
   'business.enrich': 'Enrichissement',
   'business.audit': 'Audit de site',
@@ -57,6 +59,7 @@ export const HANDLERS: Record<JobType, Handler> = {
   async 'hosting.reconcile'(p,ctx){const {orderId}=z.object({orderId:uuid}).parse(p);return reconcileHosting(orderId,(message,progress)=>ctx.log(message,progress))},
   async 'hosting.domain_check'(p){const {orderId,domain}=z.object({orderId:uuid,domain:z.string().max(253)}).parse(p);return checkHostingDomain(orderId,domain)},
   async 'hosting.sweep'(){return sweepHosting()},
+  async 'customer.access_email'(p){return deliverCustomerAccess(p)},
   async 'search.run'(p, ctx) {
     const input = z.object({ runId: uuid.optional(), savedSearchId: uuid.optional(), scheduleId: uuid.optional(), params: z.unknown().optional(), autoEnrich: z.boolean().default(true) }).parse(p)
     const db = sql()
@@ -223,7 +226,8 @@ export const HANDLERS: Record<JobType, Handler> = {
     const jobs = await db`delete from automation_jobs where status in ('COMPLETED','CANCELLED') and finished_at < now() - interval '30 days' returning id`
     const expired = await db`update generated_websites set preview_enabled = false where preview_enabled and preview_expires_at < now() returning id`
     const attempts = await db`delete from login_attempts where created_at < now() - interval '7 days' returning id`
-    return { jobLogs: logs.length, jobs: jobs.length, previewsExpired: expired.length, loginAttempts: attempts.length }
+    const accessRequests = await db`delete from customer_access_requests where created_at < now() - interval '7 days' returning id`
+    return { jobLogs: logs.length, jobs: jobs.length, previewsExpired: expired.length, loginAttempts: attempts.length, accessRequests: accessRequests.length }
   },
 
   async 'import.run'(p, ctx) {

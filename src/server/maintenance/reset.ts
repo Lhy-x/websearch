@@ -14,7 +14,7 @@ export const PROJECT_TABLES=[
   'saved_searches','search_runs','geocode_cache','website_templates','generated_websites','website_versions','website_assets','sales_offers','prompt_strategies',
   'proposals','campaigns','campaign_sequences','campaign_prospects','outbound_messages','email_events','conversations','inbound_messages',
   'crm_opportunities','crm_tasks','crm_notes','automation_jobs','job_logs','automation_schedules','worker_heartbeats','suppression_list','api_usage',
-  'audit_logs','preview_views','login_attempts','kv_store','website_orders','stripe_events','generation_batches','generation_batch_items','website_hosting','workspace_achievements',
+  'audit_logs','preview_views','login_attempts','customer_access_requests','kv_store','website_orders','stripe_events','generation_batches','generation_batch_items','website_hosting','workspace_achievements',
 ] as const
 
 export async function resetDatabase({confirm=false,log=console.log}:{confirm?:boolean;log?:(message:string)=>void}={}) {

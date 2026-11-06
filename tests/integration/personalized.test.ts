@@ -86,3 +86,16 @@ it('feeds a missing 3D slot back to the model and accepts only the corrected aut
   expect(isHtmlSite(config)&&config.html).toContain('data-glass-scene')
   expect(readFileSync(path.join(dir,'calls'),'utf8')).toContain('exactement un emplacement')
 },60000)
+
+it('renders a different number of glass fragments and a transparent composition from the individual scene direction',async()=>{
+ const html=base.replace('</body>','<div data-glass-scene style="height:360px"></div></body>')
+ const presentation={fragments:3,depth:.6,bevel:.02,rotation:.3,spread:1.1,turn:-.4,roughness:.22,exposure:1.3,transparent:true,accent:'none' as const}
+ const renderedDocument=await renderVersion({schemaVersion:1,kind:'html',html,glassScene:{...scene,presentation},designPlan:plan,businessName:'TEST Salon Lumière',media:[],report:null},'export')
+ const browser=await getBrowser({softwareWebGL:true}),context=await browser.newContext({viewport:{width:390,height:844}})
+ try{
+  const page=await context.newPage();await page.setContent(renderedDocument)
+  await page.waitForFunction(()=>document.documentElement.dataset.glassState==='ready',undefined,{timeout:20000})
+  const rendered=await page.evaluate(()=>{const runtime=(window as unknown as {__personalizedGlass:{pieces:number;presentation:unknown}}).__personalizedGlass;const canvas=document.querySelector('canvas');return {pieces:runtime.pieces,presentation:runtime.presentation,alpha:canvas?.getContext('webgl2')?.getContextAttributes()?.alpha}})
+  expect(rendered.pieces).toBe(3);expect(rendered.presentation).toEqual(presentation);expect(rendered.alpha).toBe(true)
+ }finally{await context.close()}
+},60000)

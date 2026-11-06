@@ -46,6 +46,12 @@ test('one click creates an AI-authored site using the uploaded skill and embeds 
     await expect.poll(async()=>{const rows=await db<{status:string;error:string;result:{websiteId:string}}[]>`select status,error,result from automation_jobs where type='website.generate' and payload->>'businessId'=${id!} order by created_at desc limit 1`;job=rows[0]!;return job?.status},{timeout:90000}).toBe('COMPLETED')
     const [site]=await db<{preview_token:string;generator:string}[]>`select preview_token,generator from generated_websites where id=${job!.result.websiteId}`
     expect(site!.generator).toContain('personnalise-skill')
+    const [identity]=await db`select creative_brief->'artDirection' direction from generated_websites where id=${job!.result.websiteId}`
+    expect(identity!.direction.version).toBe(2)
+    expect(identity!.direction.evidence.length).toBeGreaterThanOrEqual(3)
+    await page.goto(`/sites/${job!.result.websiteId}`)
+    await page.getByText('La direction artistique du site',{exact:true}).click()
+    await expect(page.getByText('Pourquoi cette direction pour cette entreprise ?',{exact:true})).toBeVisible()
     const response=await page.goto(`/preview/${site!.preview_token}`)
     expect(response!.headers()['content-security-policy']).toContain('sandbox allow-scripts')
     await page.waitForFunction(()=>document.documentElement.dataset.glassState==='ready',undefined,{timeout:30000})

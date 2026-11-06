@@ -30,7 +30,7 @@ function responses(...htmls: string[]) {
   process.env.FAKE_CLI_DIR = dir
   process.env.FAKE_CLI_LOG = log
 }
-const calls = () => (existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l) as { flavour: string; argv: string[]; stdin: string }) : [])
+const calls = () => (existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l) as { flavour: string; argv: string[]; stdin: string;phase?:string }).filter(l=>l.phase!=='direction') : [])
 
 const place: RawPlace = {
   source: 'overture', sourceRecordId: 'TEST-bespoke-1', name: 'TEST Salon Lumière', sector: 'hair_salon', sourceCategory: 'hair_salon', address: '3 rue Test', postcode: '76000', city: 'Rouen', region: null, country: 'FR',
@@ -95,8 +95,10 @@ describe('bespoke site generation (subscription provider)', () => {
     expect(system).toContain('Spend your boldness in one place')
     expect(c!.stdin).toContain('"telephone_lien": "tel:+33235111111"')
     expect(c!.stdin).toContain('contact@salon-lumiere.test')
+    // The separate direction call is recorded as well as the HTML call.
+    expect((await sql()`select operation from api_usage where operation='site_direction' and success`)).toHaveLength(1)
     // usage recorded at 0 $ (subscription)
-    const [u] = await sql()<{ provider: string; cost_usd: string; units: number }[]>`select provider, cost_usd, units from api_usage where success`
+    const [u] = await sql()<{ provider: string; cost_usd: string; units: number }[]>`select provider, cost_usd, units from api_usage where success and operation='site_bespoke'`
     expect(u).toMatchObject({ provider: 'claude-code', units: 1 })
     expect(Number(u!.cost_usd)).toBe(0)
     // public preview: banner + noindex
@@ -119,27 +121,21 @@ describe('bespoke site generation (subscription provider)', () => {
     expect(isHtmlSite(v.config) && v.config.html).not.toContain('06 12 34 56 78')
   })
 
-  it('a site that keeps inventing facts is rejected; "auto" mode falls back to a template site', async () => {
+  it('a site that keeps inventing facts is rejected; legacy "auto" mode never substitutes a template', async () => {
     const bad = SITE.replace('</footer>', '<p>Plus de 30 ans d’expérience, 5000 clients satisfaits.</p></footer>')
     responses(bad, bad, bad, bad)
     const { id } = await persistCluster([place])
     await expect(generateBespokeWebsite(id)).rejects.toThrow(/Site rejeté/)
     const [w] = await sql()<{ status: string }[]>`select status from generated_websites`
     expect(w!.status).toBe('ERROR')
-    // auto mode: bespoke tried again (2 calls, still invented) then template site whose copy is written by the AI
-    responses(bad, bad)
-    writeFileSync(path.join(dir, 'response-3.json'), JSON.stringify({
-      style: 'elegant', palette: { primary: '#5b2a86', accent: '#e0a458', background: '#ffffff', surface: '#f7f3fa', text: '#1c1324', muted: '#6b5e75' }, fontPairIndex: 0,
-      hero: { eyebrow: 'Coiffure à Rouen', title: 'x', subtitle: 'Un salon de quartier attentif.', primaryCtaLabel: 'Appeler' },
-      about: { title: 'Le salon', body: 'Un lieu calme pour prendre soin de vous.' },
-      services: [{ title: 'Coupe', description: 'Coupe et brushing.', icon: 'scissors' }, { title: 'Couleur', description: 'Couleur et balayage.', icon: 'brush' }],
-      benefits: [], faq: [{ q: 'Faut-il réserver ?', a: 'Appelez-nous.' }], seo: { title: 'TEST Salon Lumière', description: 'Coiffeur à Rouen.' },
-    }))
-    const { job } = await enqueueJob('website.generate', { businessId: id, generator: 'auto' })
-    const ctx = { job: job as Job, log: async () => {}, isActive: async () => true }
-    const r = (await HANDLERS['website.generate']({ businessId: id, generator: 'auto' }, ctx)) as { websiteId: string }
-    const v = (await getWebsiteVersion(r.websiteId))!
-    expect(isHtmlSite(v.config)).toBe(false) // template fallback
+    // The legacy alias must fail visibly rather than return an unrelated catalogue layout.
+    responses(bad,bad)
+    for(const n of [1,2])writeFileSync(path.join(dir,`response-${n}.json`),JSON.stringify({designPlan:PLAN,html:bad.replace('</body>','<div data-glass-scene style="height:360px"></div></body>'),glassScene:{silhouette:'<svg viewBox="0 0 100 100"><path d="M 50 4 L 96 50 L 50 96 L 4 50 Z"/></svg>',palette:['#172138','#b7ccff','#705bed'],description:'TEST Sculpture originale'}}))
+    const {job}=await enqueueJob('website.generate',{businessId:id,generator:'auto'})
+    const ctx={job:job as Job,log:async()=>{},isActive:async()=>true}
+    await expect(HANDLERS['website.generate']({businessId:id,generator:'auto'},ctx)).rejects.toThrow(/Site rejeté/)
+    expect(await sql()`select id from generated_websites where status='READY'`).toHaveLength(0)
+
   })
 
   it('visual review: the model receives real screenshots (desktop + mobile) and refines its site', async () => {

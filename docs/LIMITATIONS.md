@@ -23,7 +23,7 @@ règles), mais **n'a pas pu être exécuté contre le vrai service** :
 de test (Paramètres → Prospection) et une génération IA.
 
 - **Abonnements Claude / ChatGPT** : l'intégration passe par les CLI officiels (`claude`, `codex`), qui doivent être installés et connectés **sur la machine du worker**. Testée avec des doubles de test (arguments, schémas, erreurs « non connecté » / « limite atteinte ») ; les limites d'usage de votre forfait s'appliquent (le worker réessaie plus tard). En Docker, le worker n'a pas votre connexion : lancez-le en natif sur votre Mac ou montez `~/.claude` / `~/.codex`.
-- **Qualité des sites sur mesure** : dépend du modèle utilisé (Opus recommandé). Les contrôles automatiques garantissent l'absence de faits inventés et un rendu mobile correct, pas le goût : relisez avant d'envoyer.
+- **Qualité des sites sur mesure** : dépend du modèle utilisé (Opus recommandé). Les contrôles vérifient des faits, le rendu mobile, les polices prévues et des ressemblances de structure/styles/géométrie avec les créations récentes. Ils ne constituent pas une garantie exhaustive contre toute invention ou ressemblance et n’évaluent pas parfaitement le goût : relisez avant d’envoyer.
 
 ## Fonctionnalités absentes ou partielles
 

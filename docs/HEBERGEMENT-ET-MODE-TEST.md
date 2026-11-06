@@ -24,13 +24,32 @@ Deux sélections qui se chevauchent réutilisent les créations déjà actives. 
 les échecs ou annuler les tâches encore en attente. Une création déjà en cours finit son travail.
 La concurrence du moteur se règle dans les connexions ; une file d’attente n’est pas un échec.
 
-Le bouton normal utilise l’IA et le skill 3D importé. Le moteur récupère le texte du site officiel
+Le bouton normal utilise l’IA et le skill 3D importé. Les anciennes demandes « ai » et « auto » utilisent aussi ce pipeline ; un refus ne revient plus à un template. Le moteur récupère le texte du site officiel
 connu si nécessaire, les horaires, contacts, prestations et enrichissements validés. Dans la fiche
 prospect, **Brief de création**, ajoutez des informations publiques exactes et une direction artistique
 facultative. Les notes CRM privées ne sont pas utilisées. Sans IA configurée, le bouton explique
 la connexion nécessaire ; il ne remplace pas une création personnalisée par un template.
-Les directions récentes servent de contre-exemples. Une copie quasi identique de structure et de CSS
-est refusée ou corrigée ; cela ne garantit pas à lui seul une direction artistique réussie.
+Avant le HTML, l’IA propose trois pistes de conception pour le dossier et en sélectionne une.
+Elle doit justifier ses décisions par des citations exactes d’au moins trois faits distincts
+(deux seulement si le dossier ne contient que deux champs), et utiliser le brief ou le texte officiel
+lorsqu’ils existent. Le modèle ne reçoit plus de liste de prestations génériques issue du catalogue.
+La direction retenue est réservée en base : deux créations simultanées voient aussi les identités
+réservées par leurs voisines. Les vingt créations récentes ou en cours servent de contre-exemples,
+y compris une précédente création pour la même entreprise.
+
+Le contrôle compare le DOM simplifié, les styles de mise en page et la géométrie réellement rendue
+dans Chromium. Une copie ne passe pas simplement en changeant de couleurs, de classes ou de conteneurs.
+Une reconception peut être demandée même avec zéro passe de correction ordinaire. Les tentatives sont
+bornées : une copie persistante reste en échec visible et ne devient pas un template de secours.
+Les polices prévues doivent être appliquées, et les détails publics cités dans le plan doivent nourrir
+la rédaction. Dans l’éditeur, ouvrez **La direction artistique du site** pour consulter ces faits et
+les raisons du choix. La qualité artistique finale dépend toujours du modèle ; relisez les créations.
+
+Le rendu 3D dispose aussi d’une présentation individuelle : trois à sept fragments, épaisseur,
+rotation, dispersion, sens du mouvement, rugosité, exposition, fond transparent et accent facultatif.
+La sphère décorative et les quatre fragments ne sont plus imposés aux nouvelles créations.
+La conception préalable et les reconceptions consomment des appels IA supplémentaires, toujours soumis
+au budget et au plafond journalier. Régénérez un site pour obtenir ce nouveau processus.
 
 ## Essayer le parcours en local
 

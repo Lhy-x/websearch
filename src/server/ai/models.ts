@@ -3,7 +3,7 @@ import type { Settings } from '../core/settings'
 export type Provider = 'anthropic' | 'openai' | 'openrouter' | 'claude-code' | 'codex'
 export const SUBSCRIPTION_PROVIDERS: Provider[] = ['claude-code', 'codex']
 export const isSubscription = (p: Provider) => SUBSCRIPTION_PROVIDERS.includes(p)
-export type TaskKind = 'site_generation' | 'site_bespoke' | 'proposal' | 'reply_classification' | 'reply_draft' | 'analysis' | 'assistant'
+export type TaskKind = 'site_generation' | 'site_direction' | 'site_bespoke' | 'proposal' | 'reply_classification' | 'reply_draft' | 'analysis' | 'assistant'
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 
 /** USD per 1M tokens (Anthropic first-party list prices). */
@@ -57,12 +57,12 @@ export function chooseModel(ai: Settings['ai'], task: TaskKind): ModelChoice | n
       effort = strongTask ? 'medium' : 'low'
   }
   // the bespoke site is the flagship output: always the strong model, high effort
-  if (task === 'site_bespoke') {
+  if (task === 'site_bespoke'||task==='site_direction') {
     model = strong
     effort = ai.costMode === 'LOW_COST' ? 'medium' : 'high'
   }
   if (!model && !sub) return null
-  const maxTokens = task === 'site_bespoke' ? 64000 : task === 'site_generation' ? 16000 : task === 'reply_classification' || task === 'assistant' ? 2000 : 8000
+  const maxTokens = task === 'site_direction'?6000:task === 'site_bespoke' ? 64000 : task === 'site_generation' ? 16000 : task === 'reply_classification' || task === 'assistant' ? 2000 : 8000
   return { provider: ai.provider, model, effort, maxTokens }
 }
 

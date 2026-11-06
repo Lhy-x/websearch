@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button'
 import { Badge, Card, CardBody, CardHeader, Notice, Textarea } from '@/components/ui/primitives'
 import { useJobRunner } from '@/components/use-job'
 import type { HtmlSite } from '@/lib/site/bespoke-schema'
+import type {ArtDirection} from '@/lib/site/art-direction'
 import { api, fmtDate } from '@/lib/utils'
 
 interface Props {
+  identity?:ArtDirection
   shareActions?: React.ReactNode
   site: { id: string; business_id: string; business_name: string; preview_enabled: boolean; preview_expires_at: string | null; generator: string | null; model: string | null; previewUrl: string }
   initial: { version: number; config: HtmlSite }
@@ -20,7 +22,7 @@ interface Props {
 
 const SUGGESTIONS = ['Rends le site plus chaleureux et plus lumineux', 'Mets davantage en avant le bouton d’appel sur mobile', 'Change la palette pour des tons bleu nuit et laiton', 'Typographie plus éditoriale, titres plus grands', 'Simplifie : moins de sections, plus d’air']
 
-export function HtmlEditor({ site, initial, versions, shots, shareActions }: Props) {
+export function HtmlEditor({ site, initial, versions, shots, shareActions,identity }: Props) {
   const router = useRouter()
   const runJob = useJobRunner()
   const [cfg, setCfg] = useState<HtmlSite>(initial.config)
@@ -105,6 +107,7 @@ export function HtmlEditor({ site, initial, versions, shots, shareActions }: Pro
               <CardHeader title="Plan de design" />
               <CardBody className="space-y-2 text-xs">
                 <p><strong>Concept :</strong> {plan.concept}</p>
+                {identity?<div className="my-4 space-y-4 rounded-2xl bg-panel-2 p-4"><p className="font-medium">Pourquoi cette direction pour cette entreprise ?</p><p className="leading-6">{identity.rationale}</p><p className="text-muted">Faits vérifiés utilisés pour la conception de départ :</p>{identity.evidence.map((item,index)=><div key={index} className="space-y-2 border-l-2 border-primary/30 pl-3"><blockquote className="break-words leading-6">« {item.quote} »</blockquote><p className="leading-6 text-muted">{item.decision}</p></div>)}</div>:null}
                 <div className="flex flex-wrap gap-1.5">{plan.palette.map((c) => <span key={c.hex + c.name} className="inline-flex items-center gap-1 rounded-md border border-border px-1.5 py-0.5"><span className="size-3 rounded-sm border border-border" style={{ background: /^#[0-9a-f]{3,8}$/i.test(c.hex) ? c.hex : undefined }} />{c.name}</span>)}</div>
                 <p><strong>Typographie :</strong> {plan.typography}</p>
                 <p><strong>Mise en page :</strong> {plan.layout}</p>

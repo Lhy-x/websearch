@@ -8,8 +8,7 @@ import { enrichBusiness } from '../enrich/crawl'
 import { auditWebsite } from '../enrich/audit'
 import { generateWebsite } from '../sites/service'
 import { generateBespokeWebsite, reviseBespokeWebsite } from '../sites/bespoke/generate'
-import { aiAvailability } from '../ai/client'
-import { AppError, NotConfiguredError } from '../core/errors'
+import { NotConfiguredError } from '../core/errors'
 import { captureWebsite } from '../sites/screenshots'
 import { generateProposal } from '../proposals/service'
 import { addProspects, tickCampaign } from '../campaigns/service'
@@ -136,27 +135,17 @@ export const HANDLERS: Record<JobType, Handler> = {
     const input = z
       .object({ businessId: uuid, templateId: z.string().optional().nullable(), style: z.string().optional().nullable(), generator: z.enum(['auto', 'bespoke', 'ai', 'deterministic', 'glass3d', 'personalized']).default('personalized') })
       .parse(p)
-    // auto: bespoke when an AI is available and the setting says so; template generation otherwise
-    let mode = input.generator
-    if (mode === 'auto' && !input.templateId) {
-      const s = await getSettings()
-      if (s.sites.generationMode === 'bespoke' && (await aiAvailability()).available) mode = 'bespoke'
-    }
+    // Older clients still send "ai" or "auto". They now use the same custom pipeline,
+    // never an AI-written text pasted into a catalogue layout or a silent fallback.
+    const mode=input.generator==='ai'||input.generator==='auto'?'personalized':input.generator
     let r: { websiteId: string; version: number }
     if (mode === 'personalized') {
       await ctx.log('Conception personnalisée à partir du skill Premium 3D Glass : direction artistique, silhouette originale et site unique.')
-      r = await generateBespokeWebsite(input.businessId,{personalized:true,jobId:ctx.job.id,log:(m,progress)=>ctx.log(m,progress)})
+      r = await generateBespokeWebsite(input.businessId,{personalized:true,styleHint:input.style,jobId:ctx.job.id,log:(m,progress)=>ctx.log(m,progress)})
     } else if (mode === 'bespoke') {
-      try {
-        r = await generateBespokeWebsite(input.businessId, { styleHint: input.style, jobId: ctx.job.id, log: (m,progress) => ctx.log(m,progress) })
-      } catch (e) {
-        // explicit "bespoke" requests fail loudly; "auto" falls back to a template site and says why
-        if (input.generator === 'bespoke' || !(e instanceof AppError)) throw e
-        await ctx.log(`⚠ Sur mesure impossible (${(e as Error).message.slice(0, 200)}) — génération par template`)
-        r = await generateWebsite(input.businessId, { style: input.style as never, generator: 'auto', jobId: ctx.job.id })
-      }
+      r = await generateBespokeWebsite(input.businessId, { styleHint: input.style, jobId: ctx.job.id, log: (m,progress) => ctx.log(m,progress) })
     } else {
-      r = await generateWebsite(input.businessId, { templateId: input.templateId, style: input.style as never, generator: mode === 'auto' ? 'auto' : mode, jobId: ctx.job.id })
+      r = await generateWebsite(input.businessId, { templateId: input.templateId, style: input.style as never, generator: mode, jobId: ctx.job.id })
     }
     await enqueueJob('website.capture', { websiteId: r.websiteId }, { priority: 90, idempotencyKey: `capture:${r.websiteId}:v${r.version}` })
     return r

@@ -3,7 +3,7 @@ import Stripe from 'stripe'
 import {resetDb,insertTestBusiness} from './helpers'
 import {closeDb,sql} from '@/server/core/db'
 import {setSecret,updateSettings} from '@/server/core/settings'
-import {createCheckout} from '@/server/billing/orders'
+import {createCheckout,syncOrderFromStripe} from '@/server/billing/orders'
 import {generateWebsite} from '@/server/sites/service'
 import {checkoutDiagnostics,checkoutFailure,redactStripeDetail} from '@/server/billing/checkout-errors'
 
@@ -126,4 +126,21 @@ it('refuses a tax rate that Stripe would add on top of the price before opening 
  expect(calls).toEqual(['/v1/tax_rates/txr_exclusive'])
  expect((await checkoutDiagnostics()).test).toMatchObject({category:'tax_rate',message:expect.stringContaining('inclus')})
  expect((await sql()`select status from website_orders`)[0]!.status).toBe('FAILED')
+})
+
+it('confirms a paid order from Stripe when the webhook was missed',async()=>{
+ const generated=await site()
+ offlineStripe(()=>accepted())
+ await createCheckout(generated.previewToken)
+ const [order]=await sql()<{id:string;access_token:string}[]>`select id,access_token from website_orders`
+ vi.stubGlobal('fetch',vi.fn(async(input:unknown)=>{
+  const path=new URL(String(input)).pathname
+  if(path==='/v1/checkout/sessions/cs_fixture_checkout')return Response.json({id:'cs_fixture_checkout',object:'checkout.session',status:'complete',payment_status:'paid',livemode:false,currency:'eur',amount_total:19900,metadata:{order_id:order!.id},customer:'cus_fixture',customer_details:{email:'acheteur@example.test'},invoice:'in_fixture'})
+  if(path==='/v1/invoices/in_fixture')return Response.json({id:'in_fixture',object:'invoice',status:'paid',livemode:false,currency:'eur',total:19900,metadata:{order_id:order!.id},hosted_invoice_url:'https://invoice.stripe.com/i/fixture',invoice_pdf:'https://pay.stripe.com/invoice/fixture/pdf'})
+  throw new Error('unexpected '+path)
+ }))
+ await syncOrderFromStripe(order!.access_token)
+ expect((await sql()`select status,buyer_email,invoice_url from website_orders`)[0]).toMatchObject({status:'PAID',buyer_email:'acheteur@example.test',invoice_url:'https://invoice.stripe.com/i/fixture'})
+ expect(await sql()`select id from automation_jobs where type='customer.access_email'`).toHaveLength(1)
+ await syncOrderFromStripe(order!.access_token) // already complete: no further Stripe call needed
 })

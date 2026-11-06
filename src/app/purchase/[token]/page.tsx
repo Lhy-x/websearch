@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { CircleCheck, Clock3, Download, FileText, Layers2 } from 'lucide-react'
-import { getPurchase } from '@/server/billing/orders'
+import { getPurchase, syncOrderFromStripe } from '@/server/billing/orders'
 import { formatPrice } from '@/server/proposals/service'
 import { Button } from '@/components/ui/button'
 import { Notice } from '@/components/ui/primitives'
@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Votre commande', robots: { index: false, follow: false } }
 export default async function PurchasePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
+  await syncOrderFromStripe(token)
   const order = await getPurchase(token); if (!order) notFound()
   const paid = order.status === 'PAID', failed = ['FAILED','EXPIRED'].includes(order.status)
   if(paid)return <CustomerDashboard token={token} initial={await customerDashboard(token)}/>

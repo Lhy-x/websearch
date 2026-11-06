@@ -6,7 +6,7 @@ import { lookupPreview, getWebsiteVersion } from '../sites/service'
 import { websiteVersionSchema } from '@/lib/site/bespoke-schema'
 import { billingSetup, publicBase, stripeClient, stripeUrl,stripeCredentials,taxRateProblem } from './stripe'
 import { processHostingStripeEvent } from '../hosting/service'
-import { recordCheckoutFailure,recordCheckoutProblem,clearCheckoutFailure } from './checkout-errors'
+import { recordCheckoutFailure,recordCheckoutProblem,clearCheckoutFailure,redactStripeDetail } from './checkout-errors'
 import { enqueueCustomerAccessEmail } from './customer-access'
 
 export async function createCheckout(token:string) {
@@ -122,6 +122,34 @@ export async function verifiedStripeEvent(raw:string,signature:string) {
  if(!secret)throw new AppError('Webhook Stripe non configuré',503)
  const stripe=await stripeClient(live)
  try{return stripe.webhooks.constructEvent(raw,signature,secret)}catch{throw new AppError('Signature Stripe invalide',401)}
+}
+/**
+ * Webhooks can be missed: the local test relay stops whenever the app restarts, a server can be offline, and
+ * Stripe does not resend events to `stripe listen`. While an order waits for confirmation, read its Checkout
+ * session (and invoice) straight from Stripe and apply them through the same checks as a webhook.
+ */
+export async function syncOrderFromStripe(token:string) {
+ if(!/^[a-zA-Z0-9_-]{35,64}$/.test(token))return
+ const [order]=await sql()<{status:string;livemode:boolean;stripe_session_id:string|null;invoice_url:string|null}[]>`select status,livemode,stripe_session_id,invoice_url from website_orders where access_token=${token}`
+ if(!order?.stripe_session_id)return
+ const waiting=order.status==='OPEN'||order.status==='PENDING'
+ if(!waiting&&!(order.status==='PAID'&&!order.invoice_url))return
+ try {
+  const stripe=await stripeClient(order.livemode)
+  const session=await stripe.checkout.sessions.retrieve(order.stripe_session_id)
+  if(waiting&&session.status!=='open'){
+   const type=session.status==='expired'?'checkout.session.expired':'checkout.session.completed'
+   await processStripeEvent({id:`sync:${session.id}:${session.status}:${session.payment_status}`,type,livemode:session.livemode,data:{object:session}} as unknown as Stripe.Event)
+  }
+  const invoiceId=typeof session.invoice==='string'?session.invoice:session.invoice?.id
+  if(invoiceId&&session.payment_status==='paid'){
+   const invoice=await stripe.invoices.retrieve(invoiceId)
+   if(invoice.status==='paid'||invoice.status==='open')await processStripeEvent({id:`sync:${invoice.id}:${invoice.status}`,type:'invoice.finalized',livemode:invoice.livemode,data:{object:invoice}} as unknown as Stripe.Event)
+  }
+ } catch(error) {
+  // The webhook stays the primary path; never break the customer page.
+  console.error('[stripe sync]',error instanceof AppError?error.message:error instanceof Stripe.errors.StripeError?redactStripeDetail(error.message):'erreur inattendue')
+ }
 }
 export async function getPurchase(token:string) {
  if(!/^[a-zA-Z0-9_-]{35,64}$/.test(token))return null

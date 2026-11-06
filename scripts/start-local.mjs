@@ -9,6 +9,8 @@ if(!existsSync('.env'))missing.push('Configuration locale .env : lancez npm run 
 if(!existsSync('node_modules/next'))missing.push('Dépendances : lancez npm ci')
 if(missing.length){console.error('Il manque :\n'+missing.map(m=>'• '+m).join('\n'));process.exit(1)}
 loadEnvFile('.env')
+// Trust the OS certificate store like the Stripe CLI does, so HTTPS inspected by an antivirus, VPN or company proxy still reaches Stripe.
+if(process.allowedNodeEnvironmentFlags.has('--use-system-ca')&&!/(?:^|\s)--use-system-ca(?:\s|$)/.test(process.env.NODE_OPTIONS??''))process.env.NODE_OPTIONS=`${process.env.NODE_OPTIONS??''} --use-system-ca`.trim()
 const children = new Set()
 let stopping = false
 function launch(args) {

@@ -16,8 +16,9 @@ export function BillingSettings({onSaved}:{onSaved?:(data:{commerce:Settings['co
  const [credentialMode,setCredentialMode]=useState<'test'|'live'>('test')
  const [taxRate,setTaxRate]=useState('');const [price,setPrice]=useState('');const [base,setBase]=useState('');const [enabled,setEnabled]=useState(false);const [key,setKey]=useState('');const [webhook,setWebhook]=useState('');const [busy,setBusy]=useState(false)
  const [listenerActive,setListenerActive]=useState(false)
- async function load(first=false,signal?:AbortSignal){const r=await api<NonNullable<typeof data>>('/api/billing',{signal});if(signal?.aborted)return;setData(r);if(first)setCredentialMode(r.live?'live':'test');setTaxRate(r.commerce.taxRateId);setPrice(r.commerce.priceCents===null?'':String(r.commerce.priceCents/100));setBase(r.base);setEnabled(r.commerce.enabled);onSaved?.({...r,base:r.previewBaseUrl});void cache.invalidateQueries({queryKey:['launch-mode']})}
- useEffect(()=>{const controller=new AbortController();load(true,controller.signal).catch(e=>{if(!controller.signal.aborted)toast.error(e.message)});return()=>controller.abort()},[])
+ async function load(first=false,isStale=()=>false){const r=await api<NonNullable<typeof data>>('/api/billing');if(isStale())return;setData(r);if(first)setCredentialMode(r.live?'live':'test');setTaxRate(r.commerce.taxRateId);setPrice(r.commerce.priceCents===null?'':String(r.commerce.priceCents/100));setBase(r.base);setEnabled(r.commerce.enabled);onSaved?.({...r,base:r.previewBaseUrl});void cache.invalidateQueries({queryKey:['launch-mode']})}
+ // Ignore a stale response instead of aborting fetch: an aborted request rejects with an AbortError that the dev overlay reports as unhandled.
+ useEffect(()=>{let stale=false;load(true,()=>stale).catch(e=>{if(!stale)toast.error(e.message)});return()=>{stale=true}},[])
  if(!data)return <p className="p-5 text-sm text-muted">Chargement du paiement…</p>
  const credentialStatus=data.credentials[credentialMode]
  const diagnostic=data.diagnostics?.[credentialMode]

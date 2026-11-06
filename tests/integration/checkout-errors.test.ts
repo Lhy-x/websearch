@@ -82,3 +82,13 @@ it('classifies permission, tax, network and account problems without treating ne
  expect(checkoutFailure(new Error('unknown secret text'))).toMatchObject({detail:null,definitive:false})
  expect(redactStripeDetail('Bearer private-token\nwhsec_abc')).not.toMatch(/private-token|whsec_abc|\n/)
 })
+
+it('explains the network cause hidden behind a Stripe connection error',()=>{
+ const tls=Object.assign(new Error('unable to get local issuer certificate'),{code:'UNABLE_TO_GET_ISSUER_CERT_LOCALLY'})
+ const failure=checkoutFailure(new Stripe.errors.StripeConnectionError({message:'An error occurred with our connection to Stripe. Request was retried 2 times.',detail:new TypeError('fetch failed',{cause:tls})}))
+ expect(failure).toMatchObject({category:'connection',definitive:false,message:expect.stringContaining('certificat')})
+ expect(failure.detail).toContain('UNABLE_TO_GET_ISSUER_CERT_LOCALLY')
+ const blocked=Object.assign(new AggregateError([Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:443'),{code:'ECONNREFUSED'})],''),{code:'ECONNREFUSED'})
+ expect(checkoutFailure(new Stripe.errors.StripeConnectionError({message:'Connection failed',detail:new TypeError('fetch failed',{cause:blocked})}))).toMatchObject({message:expect.stringContaining('bloquée'),action:expect.stringContaining('pare-feu')})
+ expect(checkoutFailure(new Stripe.errors.StripeConnectionError({message:'Connection failed'}))).toMatchObject({message:'La connexion à Stripe a échoué.'})
+})

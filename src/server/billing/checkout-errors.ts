@@ -25,6 +25,33 @@ export function redactStripeDetail(value: string) {
     .replace(/[\u0000-\u001f\u007f]/g, ' ')
     .slice(0, 1200)
 }
+// A StripeConnectionError hides the real network error (TLS, DNS, firewall…) in `detail` and its `cause` chain.
+const NETWORK_CAUSES: { test: RegExp; message: string; action: string }[] = [
+  { test: /CERT|UNABLE_TO_(?:GET|VERIFY)|SELF_SIGNED|ERR_TLS|ERR_SSL/, message: 'Le certificat HTTPS présenté pour Stripe n’est pas reconnu par Node.js.',
+    action: 'Un antivirus, un VPN ou un proxy d’entreprise inspecte probablement les connexions HTTPS. Relancez l’application avec LANCER-MAC.command (Node.js utilise alors aussi les certificats du trousseau macOS) ou excluez api.stripe.com de l’inspection HTTPS.' },
+  { test: /^(?:ENOTFOUND|EAI_AGAIN|EAI_FAIL|EAI_NONAME)$/, message: 'Le serveur ne trouve pas l’adresse de Stripe (DNS).',
+    action: 'Vérifiez la connexion Internet, le DNS ou le VPN du Mac, puis réessayez.' },
+  { test: /^(?:ECONNREFUSED|EHOSTUNREACH|ENETUNREACH|EPERM|EACCES|EADDRNOTAVAIL)$/, message: 'La connexion sortante vers Stripe est bloquée.',
+    action: 'Autorisez Node.js à se connecter à api.stripe.com dans le pare-feu (pare-feu macOS, Little Snitch, LuLu, antivirus) ou le VPN, puis réessayez.' },
+  { test: /TIMEOUT|ETIMEDOUT|ECONNRESET|EPIPE|UND_ERR_SOCKET|ECONNABORTED/, message: 'La connexion à Stripe a été coupée ou a expiré.',
+    action: 'Vérifiez la stabilité de la connexion Internet, du VPN ou du proxy, puis réessayez. La commande conserve la même demande de paiement pour éviter les doublons.' },
+]
+export function networkCause(error: unknown) {
+  const queue: unknown[] = [error], seen = new Set<unknown>(), parts: string[] = []
+  let code: string | null = null
+  while (queue.length && seen.size < 12) {
+    const current = queue.shift()
+    if (!current || typeof current !== 'object' || seen.has(current)) continue
+    seen.add(current)
+    const value = current as { code?: unknown; message?: unknown; detail?: unknown; cause?: unknown; errors?: unknown }
+    const own = typeof value.code === 'string' && /^[A-Z][A-Z0-9_]{2,60}$/.test(value.code) ? value.code : null
+    if (own) code ??= own
+    if (current !== error && typeof value.message === 'string' && value.message) parts.push(own && !value.message.includes(own) ? `${own} ${value.message}` : value.message)
+    queue.push(value.detail, value.cause, ...(Array.isArray(value.errors) ? value.errors : []))
+  }
+  const known = code ? NETWORK_CAUSES.find(cause => cause.test.test(code!)) : undefined
+  return { code, summary: [...new Set(parts)].join(' — ') || null, message: known?.message ?? null, action: known?.action ?? null }
+}
 const identifier = (value: unknown) => typeof value === 'string' && /^[a-zA-Z0-9_.[\]-]{1,100}$/.test(value) ? value : null
 
 export function checkoutFailure(error: unknown) {
@@ -32,6 +59,7 @@ export function checkoutFailure(error: unknown) {
   const text = stripeError?.message.toLowerCase() ?? ''
   const parameter = identifier(stripeError?.param)
   const code = stripeError?.code
+  let networkDetail = ''
   let category = 'unavailable', message = 'Stripe ne peut pas ouvrir le paiement pour le moment.', action = 'Réessayez. Si le refus persiste, consultez les journaux de requêtes dans Stripe avec la référence ci-dessous.'
   if (stripeError instanceof Stripe.errors.StripeAuthenticationError) {
     category = 'authentication'; message = 'La clé Stripe configurée est refusée.'
@@ -40,8 +68,10 @@ export function checkoutFailure(error: unknown) {
     category = 'permissions'; message = 'La clé Stripe n’a pas les autorisations nécessaires.'
     action = 'Vérifiez les droits de la clé sur Checkout, les clients et la facturation. Une clé restreinte doit autoriser les opérations demandées.'
   } else if (stripeError instanceof Stripe.errors.StripeConnectionError) {
-    category = 'connection'; message = 'La connexion à Stripe a échoué.'
-    action = 'Vérifiez l’accès Internet du serveur et réessayez. La commande conserve la même demande de paiement pour éviter les doublons.'
+    const cause = networkCause(stripeError)
+    category = 'connection'; message = cause.message ?? 'La connexion à Stripe a échoué.'
+    action = cause.action ?? 'Vérifiez l’accès Internet du serveur et réessayez. La commande conserve la même demande de paiement pour éviter les doublons.'
+    networkDetail = cause.summary ? ` Cause : ${cause.summary}` : ''
   } else if (stripeError instanceof Stripe.errors.StripeRateLimitError) {
     category = 'rate_limit'; message = 'Stripe reçoit trop de demandes. Patientez avant de réessayer.'
     action = 'Attendez quelques instants, puis reprenez le paiement. La demande conserve sa protection contre les doublons.'
@@ -59,7 +89,7 @@ export function checkoutFailure(error: unknown) {
     action = 'Consultez le détail du refus ci-dessous et corrigez le paramètre indiqué. La facture reste demandée ; aucune option n’est retirée automatiquement pour contourner le refus.'
   }
   const definitive = stripeError instanceof Stripe.errors.StripeAuthenticationError || stripeError instanceof Stripe.errors.StripePermissionError || stripeError instanceof Stripe.errors.StripeInvalidRequestError
-  return { category, message, action, detail: stripeError ? redactStripeDetail(stripeError.message) : null, parameter, requestId: stripeError?.requestId?.match(/^req_[a-zA-Z0-9]+$/)?.[0] ?? null, definitive }
+  return { category, message, action, detail: stripeError ? redactStripeDetail(stripeError.message + networkDetail) : null, parameter, requestId: stripeError?.requestId?.match(/^req_[a-zA-Z0-9]+$/)?.[0] ?? null, definitive }
 }
 
 const keyFor = (live: boolean) => `billing:checkout-diagnostic:${live ? 'live' : 'test'}`

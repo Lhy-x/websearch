@@ -8,8 +8,8 @@ import { Button } from './ui/button'
 import { Card,CardBody,CardHeader,Field,Input,Select,Notice } from './ui/primitives'
 export function HostingSettings({onSaved}:{onSaved?:(hosting:Settings['hosting'])=>void}){
  const cache=useQueryClient(),[hosting,setHosting]=useState<Settings['hosting']|null>(null),[price,setPrice]=useState(''),[password,setPassword]=useState(''),[token,setToken]=useState(''),[secrets,setSecrets]=useState<Record<string,string>>({}),[busy,setBusy]=useState(false),[error,setError]=useState('')
- async function load(signal?:AbortSignal){try{const next=await api<{hosting:Settings['hosting'];secrets:Record<string,string>}>('/api/hosting',{signal});if(signal?.aborted)return;setHosting(next.hosting);setPrice(next.hosting.monthlyPriceCents===null?'':String(next.hosting.monthlyPriceCents/100));setSecrets(next.secrets)}catch(error){if(!signal?.aborted)setError((error as Error).message)}}
- useEffect(()=>{const controller=new AbortController();void load(controller.signal);return()=>controller.abort()},[])
+ async function load(isStale=()=>false){try{const next=await api<{hosting:Settings['hosting'];secrets:Record<string,string>}>('/api/hosting');if(isStale())return;setHosting(next.hosting);setPrice(next.hosting.monthlyPriceCents===null?'':String(next.hosting.monthlyPriceCents/100));setSecrets(next.secrets)}catch(error){if(!isStale())setError((error as Error).message)}}
+ useEffect(()=>{let stale=false;void load(()=>stale);return()=>{stale=true}},[])
  if(!hosting)return <p role="status" className="p-6 text-sm text-muted">{error||'Chargement de l’hébergement…'}</p>
  const patch=(field:keyof Settings['hosting'],value:unknown)=>setHosting(current=>({...current!,[field]:value}))
  const field=(key:keyof Settings['hosting'],label:string,hint:string)=> <Field key={key} label={label} hint={hint}><Input value={String(hosting[key])} onChange={event=>patch(key,event.target.value)}/></Field>

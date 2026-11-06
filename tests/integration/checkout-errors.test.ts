@@ -21,6 +21,7 @@ async function site(){return generateWebsite(await insertTestBusiness(),{generat
 function offlineStripe(respond:(form:URLSearchParams)=>Response){
  const fetcher=vi.fn(async(input:unknown,init?:RequestInit)=>{
   expect(String(input)).toMatch(/^https:\/\/api\.stripe\.com\/v1\/checkout\/sessions/)
+  expect(new Headers(init?.headers).has('content-length')).toBe(false)
   return respond(new URLSearchParams(String(init?.body??'')))
  })
  vi.stubGlobal('fetch',fetcher)

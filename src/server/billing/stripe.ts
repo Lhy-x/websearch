@@ -36,5 +36,13 @@ export async function billingSetup() {
 export async function stripeClient(live?:boolean) {
  const {key}=await stripeCredentials(live??(await getSettings()).launch.mode==='live')
  if(!key)throw new AppError('Stripe non configuré',503)
- return new Stripe(key,{maxNetworkRetries:2,timeout:20000,httpClient:Stripe.createFetchHttpClient()})
+ return new Stripe(key,{maxNetworkRetries:2,timeout:20000,httpClient:Stripe.createFetchHttpClient(stripeFetch as typeof fetch)})
+}
+// Importing undici v8 (safe-fetch) routes Node's global fetch through its stricter core, which rejects the duplicate
+// Content-Length that fetch appends to the one Stripe sets ("invalid content-length header", nodejs/undici#5500).
+// fetch computes the length from the body itself. Resolved at call time so tests can stub globalThis.fetch.
+function stripeFetch(input:string|URL|Request,init?:RequestInit){
+ const headers=new Headers(init?.headers)
+ headers.delete('content-length')
+ return globalThis.fetch(input,{...init,headers})
 }

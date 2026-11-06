@@ -59,7 +59,8 @@ describe('campaign engine', () => {
     await addProspects(c, ids)
     await setCampaignStatus(c, 'ACTIVE')
     expect((await tickCampaign(c)).sent).toBe(1)
-    await sql()`update outbound_messages set sent_at = sent_at - interval '1 hour'` // bypass the min interval
+    // Bypass the 10 s minimum interval without crossing local midnight (the daily cap is per local day).
+    await sql()`update outbound_messages set sent_at = sent_at - interval '20 seconds'`
     const r = await tickCampaign(c)
     expect(r.sent).toBe(0)
     expect(r.reason).toMatch(/plafond/)

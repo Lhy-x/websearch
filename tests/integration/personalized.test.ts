@@ -19,7 +19,7 @@ const plan={concept:'Atelier optique original',palette:[{name:'Encre',hex:'#1721
 const scene={silhouette:'<svg viewBox="0 0 100 100"><path d="M 50 4 L 96 50 L 50 96 L 4 50 Z"/></svg>',palette:['#172138','#b7ccff','#705bed'],description:'Sculpture de verre inspirée des gestes du métier'}
 let dir:string
 beforeEach(async()=>{await resetDb();dir=mkdtempSync(path.join(tmpdir(),'personalized-'));process.env.FAKE_CLI_DIR=dir;process.env.FAKE_CLI_LOG=path.join(dir,'calls');process.env.CLAUDE_CLI_PATH=path.join(fixtures,'fake-claude');await updateSettings({ai:{provider:'claude-code',costMode:'HIGH_QUALITY'},sites:{qualityPasses:0,visualReview:false}})})
-afterAll(async()=>{delete process.env.FAKE_CLI_DIR;delete process.env.FAKE_CLI_LOG;delete process.env.CLAUDE_CLI_PATH;await closeBrowser();await closeDb()})
+afterAll(async()=>{delete process.env.FAKE_CLI_NO_SCENE;delete process.env.FAKE_CLI_DIR;delete process.env.FAKE_CLI_LOG;delete process.env.CLAUDE_CLI_PATH;await closeBrowser();await closeDb()})
 function answer(html:string){writeFileSync(path.join(dir,'response-default.json'),JSON.stringify({designPlan:plan,html,glassScene:scene}))}
 
 it('uses the uploaded skill and AI-authored HTML, persists the scene, renders WebGL and preserves it through revision/export', async()=>{
@@ -99,3 +99,20 @@ it('renders a different number of glass fragments and a transparent composition 
   expect(rendered.pieces).toBe(3);expect(rendered.presentation).toEqual(presentation);expect(rendered.alpha).toBe(true)
  }finally{await context.close()}
 },60000)
+
+it('builds a site without the glass engine when its own art direction has no sculpture', async()=>{
+  process.env.FAKE_CLI_NO_SCENE='1'
+  try{
+    const id=await insertTestBusiness({name:'TEST Salon Lumière',email:'contact@salon-lumiere.test',phone:'+33235111111'})
+    writeFileSync(path.join(dir,'response-default.json'),JSON.stringify({designPlan:plan,html:base}))
+    const generated=await generateBespokeWebsite(id,{personalized:true})
+    const version=(await getWebsiteVersion(generated.websiteId))!.config
+    if(!isHtmlSite(version))throw new Error('Expected authored HTML')
+    expect(version.glassScene).toBeUndefined()
+    const generation=readFileSync(path.join(dir,'calls'),'utf8').trim().split('\n').map(line=>JSON.parse(line)).filter(call=>call.phase==='generation')
+    expect(generation.length).toBeGreaterThan(0)
+    expect(generation.every(call=>!String(call.stdin).includes('Premium 3D Glass')&&!JSON.stringify(call.argv).includes('Premium 3D Glass'))).toBe(true)
+    expect(JSON.stringify(generation)).toContain('n’a PAS de sculpture 3D')
+    expect(await renderVersion(version,'preview','Démonstration indépendante')).not.toContain('data:text/javascript;base64,')
+  }finally{delete process.env.FAKE_CLI_NO_SCENE}
+})

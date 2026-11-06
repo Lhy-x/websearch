@@ -144,7 +144,7 @@ export const HANDLERS: Record<JobType, Handler> = {
     const mode=input.generator==='ai'||input.generator==='auto'?'personalized':input.generator
     let r: { websiteId: string; version: number }
     if (mode === 'personalized') {
-      await ctx.log('Conception personnalisée à partir du skill Premium 3D Glass : direction artistique, silhouette originale et site unique.')
+      await ctx.log('Conception personnalisée : direction artistique propre à cette entreprise, puis site unique (sculpture 3D seulement si elle sert le concept).')
       r = await generateBespokeWebsite(input.businessId,{personalized:true,styleHint:input.style,jobId:ctx.job.id,log:(m,progress)=>ctx.log(m,progress)})
     } else if (mode === 'bespoke') {
       r = await generateBespokeWebsite(input.businessId, { styleHint: input.style, jobId: ctx.job.id, log: (m,progress) => ctx.log(m,progress) })

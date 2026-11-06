@@ -12,7 +12,8 @@ export const creativeConceptSchema=z.object({
  sections:z.array(z.object({purpose:z.string().min(5).max(150),title:z.string().min(3).max(100),layout:z.string().min(12).max(300)})).min(2).max(7),
  typography:z.object({display:fontFamily.describe('Nom exact d’une famille unique à appliquer au h1, sans commentaire ni liste de replis'),body:fontFamily.describe('Nom exact d’une famille unique à appliquer au body, sans commentaire ni liste de replis')}),
  palette:z.array(z.string().regex(/^#[0-9a-f]{6}$/i)).min(4).max(6),
- scene:z.object({symbol:z.string().min(12).max(300),placement:z.string().min(12).max(300),presentation:glassPresentationSchema}),
+ // Optional: a glass 3D sculpture is one possible signature, never imposed on every business.
+ scene:z.object({symbol:z.string().min(12).max(300),placement:z.string().min(12).max(300),presentation:glassPresentationSchema}).nullable().describe('null quand une sculpture 3D en verre ne sert pas ce concept : la signature passe alors par la typographie, la composition, la couleur, la matière ou un dessin SVG.'),
 })
 export const directionResponseSchema=z.object({
  evidence:z.array(z.object({id:z.string().max(80),quote:z.string().min(2).max(300),decision:z.string().min(12).max(400)})).min(2).max(6),

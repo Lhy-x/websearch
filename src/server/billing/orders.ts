@@ -139,7 +139,8 @@ export async function syncOrderFromStripe(token:string) {
   const session=await stripe.checkout.sessions.retrieve(order.stripe_session_id)
   if(waiting&&session.status!=='open'){
    const type=session.status==='expired'?'checkout.session.expired':'checkout.session.completed'
-   await processStripeEvent({id:`sync:${session.id}:${session.status}:${session.payment_status}`,type,livemode:session.livemode,data:{object:session}} as unknown as Stripe.Event)
+   const result=await processStripeEvent({id:`sync:${session.id}:${session.status}:${session.payment_status}`,type,livemode:session.livemode,data:{object:session}} as unknown as Stripe.Event)
+   if('status' in result)console.info('[stripe sync] commande mise à jour depuis Stripe (webhook non reçu) :',result.status)
   }
   const invoiceId=typeof session.invoice==='string'?session.invoice:session.invoice?.id
   if(invoiceId&&session.payment_status==='paid'){

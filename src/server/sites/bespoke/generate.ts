@@ -53,7 +53,7 @@ export async function runBespokePipeline(input: { facts: BusinessFacts; prompt: 
       ? await generateStructured({...request,schema:bespokeOutputSchema.extend({glassScene:glassSceneSchema})})
       : await generateStructured({...request,schema:bespokeOutputSchema})
     const data:DesignOutput=response.data
-    if(data.glassScene&&(input.direction||input.scenePresentation))data.glassScene.presentation=input.direction?.concept.scene.presentation??input.scenePresentation
+    if(data.glassScene&&(input.direction?.concept.scene||input.scenePresentation))data.glassScene.presentation=input.direction?.concept.scene?.presentation??input.scenePresentation
     return {...response,data}
   }
   const evaluate = async (html: string, scene?: GlassScene) => {
@@ -62,6 +62,7 @@ export async function runBespokePipeline(input: { facts: BusinessFacts; prompt: 
     const fingerprint=input.measure===false?undefined:await measureIdentity(s.html)
     factIssues.push(...checkDesignDiversity(s.html,input.recentDesigns??[],{fingerprint,scene}))
     if(input.direction)factIssues.push(...checkPersonalization(s.html,input.direction,fingerprint))
+    if (!input.personalized && parse(s.html).querySelector('[data-glass-scene]')) factIssues.push({code:'scene_unexpected',severity:'major',message:'Cette identité n’a pas de scène 3D : retire l’emplacement data-glass-scene et exprime la signature par la composition, la typographie ou un SVG.'})
     if (input.personalized) {
       if (parse(s.html).querySelectorAll('[data-glass-scene]').length !== 1) factIssues.push({code:'scene_slot',severity:'critical',message:'Le site doit contenir exactement un emplacement data-glass-scene.'})
       try { if(!scene) throw new Error('Direction 3D manquante'); sanitizeSilhouette(scene.silhouette) } catch(error) { factIssues.push({code:'scene_svg',severity:'critical',message:(error as Error).message}) }
@@ -135,10 +136,12 @@ export async function generateBespokeWebsite(businessId: string, opts: { styleHi
     let totalCost=reserved.costUsd,totalPasses=0,finalResult:PipelineResult|undefined
     for(let publicationAttempt=0;publicationAttempt<3;publicationAttempt++){
       const recent=await measuredReferences(websiteId)
-      const prompt=(opts.personalized?personalizedBrief(facts,settings.ai.customSiteInstructions):buildBespokePrompt(facts,{styleHint:opts.styleHint,customInstructions:settings.ai.customSiteInstructions,media:media.map(item=>({url:item.url,alt:facts.name}))}))+`\n${directionContract(reserved.direction)}\n${creativeDirection(facts,websiteId,recent)}`+(media.length?`\nMédias fournis avec licence, autorisés : ${JSON.stringify(media.map(item=>({url:item.url,alt:facts.name})))}`:'')
+      // The glass 3D engine is used only when this business's own art direction chose a sculpture.
+      const glass=!!opts.personalized&&!!reserved.direction.concept.scene
+      const prompt=(glass?personalizedBrief(facts,settings.ai.customSiteInstructions):buildBespokePrompt(facts,{styleHint:opts.styleHint,customInstructions:settings.ai.customSiteInstructions,media:media.map(item=>({url:item.url,alt:facts.name}))}))+`\n${directionContract(reserved.direction)}\n${creativeDirection(facts,websiteId,recent)}`+(media.length?`\nMédias fournis avec licence, autorisés : ${JSON.stringify(media.map(item=>({url:item.url,alt:facts.name})))}`:'')
       const evidence={sources:facts.sources,hasOfficialText:!!facts.ownSite?.text,hasPublicBrief:!!facts.publicDetails,verifiedFields:facts.verifiedDetails?.map(item=>item.field)??[],licensedMedia:media.length,artDirection:reserved.direction}
       await db`update generated_websites set creative_brief=coalesce(creative_brief,'{}'::jsonb)||${db.json(evidence)} where id=${websiteId}`
-      const r=await runBespokePipeline({facts,personalized:opts.personalized,prompt,direction:reserved.direction,recentDesigns:recent,mediaUrls:media.map(item=>item.url),passes:settings.sites.qualityPasses,visualReview:settings.sites.visualReview,jobId:opts.jobId,log:opts.log})
+      const r=await runBespokePipeline({facts,personalized:glass,prompt,direction:reserved.direction,recentDesigns:recent,mediaUrls:media.map(item=>item.url),passes:settings.sites.qualityPasses,visualReview:settings.sites.visualReview,jobId:opts.jobId,log:opts.log})
       totalCost+=r.costUsd;totalPasses+=r.passes
       const version:HtmlSite=htmlSiteSchema.parse({schemaVersion:1,kind:'html',html:r.html,glassScene:r.output.glassScene,designPlan:r.output.designPlan,businessName:facts.name,media:media.map(item=>({...item,alt:facts.name})),report:{passes:totalPasses,issues:r.issues,removed:r.removed}})
       await opts.log?.('Comparaison de cette identité avec les créations du lot…',.93)

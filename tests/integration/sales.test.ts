@@ -10,8 +10,8 @@ import {billingSetup} from '@/server/billing/stripe'
 import {trashWebsite} from '@/server/sites/lifecycle'
 import {generateProposal} from '@/server/proposals/service'
 import type {SiteConfig} from '@/lib/site/schema'
-const mocks=vi.hoisted(()=>({create:vi.fn(),retrieve:vi.fn(),expire:vi.fn()}))
-vi.mock('@/server/billing/stripe',async importOriginal=>{const actual=await importOriginal<typeof import('@/server/billing/stripe')>();const {default:Stripe}=await import('stripe');return {...actual,stripeClient:async()=>({checkout:{sessions:mocks},webhooks:new Stripe('sk_test_fake_only').webhooks})}})
+const mocks=vi.hoisted(()=>({create:vi.fn(),retrieve:vi.fn(),expire:vi.fn(),taxRate:vi.fn(async(id:string)=>({id,active:true,inclusive:true}))}))
+vi.mock('@/server/billing/stripe',async importOriginal=>{const actual=await importOriginal<typeof import('@/server/billing/stripe')>();const {default:Stripe}=await import('stripe');return {...actual,stripeClient:async()=>({checkout:{sessions:mocks},taxRates:{retrieve:mocks.taxRate},webhooks:new Stripe('sk_test_fake_only').webhooks})}})
 beforeEach(async()=>{await resetDb();process.env.STRIPE_SECRET_KEY='sk_test_fake_only';process.env.STRIPE_WEBHOOK_SECRET='whsec_fake_only';resetEnvCache();await updateSettings({commerce:{enabled:true,priceCents:19900},sites:{previewBaseUrl:'http://localhost:3999'}});mocks.create.mockReset();mocks.retrieve.mockReset();mocks.expire.mockReset();mocks.create.mockImplementation(async(_p,opts)=>({id:'cs_test_'+opts.idempotencyKey.split(':')[1],url:'https://checkout.stripe.com/c/pay/test'}));mocks.retrieve.mockResolvedValue({status:'open',url:'https://checkout.stripe.com/c/pay/test'});mocks.expire.mockResolvedValue({status:'expired'})})
 afterAll(async()=>{delete process.env.STRIPE_SECRET_KEY;delete process.env.STRIPE_WEBHOOK_SECRET;resetEnvCache();await closeDb()})
 async function site(){return generateWebsite(await insertTestBusiness(),{generator:'deterministic'})}
@@ -24,6 +24,7 @@ it('creates one fixed-price Checkout with invoice creation, reuses concurrent cl
  expect(await sql()`select id from website_orders`).toHaveLength(1)
  const o=await order();const params=mocks.create.mock.calls[0]![0]
  expect(params.invoice_creation).toMatchObject({enabled:true,invoice_data:{metadata:{order_id:o.id}}})
+ expect(params.managed_payments).toEqual({enabled:false})
  expect(params.line_items[0].tax_rates).toEqual(['txr_test']);expect(params.line_items[0].price_data.tax_behavior).toBe('inclusive')
  expect(params.billing_address_collection).toBe('required');expect(params.line_items[0].price_data.unit_amount).toBe(19900)
  expect(params.success_url).not.toContain('paid=true')

@@ -4,9 +4,9 @@ import { AppError } from '../core/errors'
 import { randomToken } from '../core/crypto'
 import { lookupPreview, getWebsiteVersion } from '../sites/service'
 import { websiteVersionSchema } from '@/lib/site/bespoke-schema'
-import { billingSetup, publicBase, stripeClient, stripeUrl,stripeCredentials } from './stripe'
+import { billingSetup, publicBase, stripeClient, stripeUrl,stripeCredentials,taxRateProblem } from './stripe'
 import { processHostingStripeEvent } from '../hosting/service'
-import { recordCheckoutFailure,clearCheckoutFailure } from './checkout-errors'
+import { recordCheckoutFailure,recordCheckoutProblem,clearCheckoutFailure } from './checkout-errors'
 
 export async function createCheckout(token:string) {
  const startedAt=new Date().toISOString()
@@ -31,6 +31,12 @@ export async function createCheckout(token:string) {
   return row
  })
  if(order.status==='PENDING')throw new AppError('Paiement en cours de vérification. Consultez votre confirmation.',409)
+ // Parameters frozen before Managed Payments was disabled can never succeed on accounts where it is on by default.
+ // Stripe never created a session from them, so start a fresh order (new idempotency key) with current parameters.
+ if(order.status==='CREATING'&&order.checkout_params&&!order.checkout_params.managed_payments){
+  await db`update website_orders set status='FAILED' where id=${order.id} and status='CREATING'`
+  return createCheckout(token)
+ }
  const stripe=await stripeClient(setup.live)
  if(order.checkout_url&&order.status==='OPEN') {
   // Check expiry rather than returning an old dead URL when an expiry webhook was missed.
@@ -43,9 +49,16 @@ export async function createCheckout(token:string) {
  }
  const base=publicBase(setup.live,setup.base)
  try {
-  const proposed:Stripe.Checkout.SessionCreateParams={mode:'payment',client_reference_id:order.id,customer_creation:'always',billing_address_collection:'required',tax_id_collection:{enabled:true},invoice_creation:{enabled:true,invoice_data:{metadata:{order_id:order.id}}},metadata:{order_id:order.id},line_items:[{quantity:1,...(setup.commerce.taxRateId?{tax_rates:[setup.commerce.taxRateId]}:{}),price_data:{tax_behavior:'inclusive',currency:order.currency,unit_amount:order.amount_cents,product_data:{name:setup.commerce.title,description:site!.business_name}}}],success_url:`${base}/purchase/${order.access_token}`,cancel_url:`${base}/buy/${token}?cancelled=1`}
+  // Managed Payments (Stripe as merchant of record) is on by default for some accounts and requires product tax codes;
+  // this app sells with its own invoices and optional fixed tax rate, so it is disabled explicitly.
+  const proposed:Stripe.Checkout.SessionCreateParams={mode:'payment',managed_payments:{enabled:false},client_reference_id:order.id,customer_creation:'always',billing_address_collection:'required',tax_id_collection:{enabled:true},invoice_creation:{enabled:true,invoice_data:{metadata:{order_id:order.id}}},metadata:{order_id:order.id},line_items:[{quantity:1,...(setup.commerce.taxRateId?{tax_rates:[setup.commerce.taxRateId]}:{}),price_data:{tax_behavior:'inclusive',currency:order.currency,unit_amount:order.amount_cents,product_data:{name:setup.commerce.title,description:site!.business_name}}}],success_url:`${base}/purchase/${order.access_token}`,cancel_url:`${base}/buy/${token}?cancelled=1`}
   await db`update website_orders set checkout_params=${db.json(proposed as never)} where id=${order.id} and checkout_params is null`
   const [saved]=await db<{checkout_params:Stripe.Checkout.SessionCreateParams}[]>`select checkout_params from website_orders where id=${order.id}`
+  const problem=await taxRateProblem(stripe,saved!.checkout_params.line_items?.[0]?.tax_rates?.[0])
+  if(problem){
+   await db`update website_orders set status='FAILED' where id=${order.id} and status='CREATING'`
+   throw await recordCheckoutProblem(problem,{orderId:order.id,live:setup.live,operation:'create'})
+  }
   const session=await stripe.checkout.sessions.create(saved!.checkout_params,{idempotencyKey:`website-order:${order.id}`})
   const url=stripeUrl(session.url)
   if(!url)throw new Error('URL Stripe manquante')

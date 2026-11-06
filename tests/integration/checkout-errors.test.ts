@@ -93,3 +93,37 @@ it('explains the network cause hidden behind a Stripe connection error',()=>{
  expect(checkoutFailure(new Stripe.errors.StripeConnectionError({message:'Connection failed',detail:new TypeError('fetch failed',{cause:blocked})}))).toMatchObject({message:expect.stringContaining('bloquée'),action:expect.stringContaining('pare-feu')})
  expect(checkoutFailure(new Stripe.errors.StripeConnectionError({message:'Connection failed'}))).toMatchObject({message:'La connexion à Stripe a échoué.'})
 })
+
+it('disables Managed Payments and explains its tax-code refusal',async()=>{
+ const generated=await site()
+ const fetcher=offlineStripe(form=>{expect(form.get('managed_payments[enabled]')).toBe('false');return accepted()})
+ await createCheckout(generated.previewToken)
+ expect(fetcher).toHaveBeenCalledTimes(1)
+ expect(checkoutFailure(new Stripe.errors.StripeInvalidRequestError({message:'Invalid line_items[0]: the product tax code is missing. Product tax code is required for Managed Payments, which is enabled by default on your account.'}))).toMatchObject({category:'managed_payments',definitive:true})
+})
+
+it('restarts an order frozen with parameters from before Managed Payments was disabled',async()=>{
+ const generated=await site()
+ vi.stubGlobal('fetch',vi.fn(async()=>{throw new TypeError('fetch failed')}))
+ await expect(createCheckout(generated.previewToken)).rejects.toMatchObject({status:502})
+ await sql()`update website_orders set checkout_params=checkout_params-'managed_payments'`
+ const fetcher=offlineStripe(form=>{expect(form.get('managed_payments[enabled]')).toBe('false');return accepted()})
+ expect(await createCheckout(generated.previewToken)).toContain('checkout.stripe.com')
+ const [failed]=await sql()<{id:string}[]>`select id from website_orders where status='FAILED'`
+ expect(new Headers(fetcher.mock.calls[0]![1]?.headers).get('idempotency-key')).not.toBe(`website-order:${failed!.id}`)
+ expect(await sql()`select status from website_orders order by created_at`).toMatchObject([{status:'FAILED'},{status:'OPEN'}])
+})
+
+it('refuses a tax rate that Stripe would add on top of the price before opening Checkout',async()=>{
+ const generated=await site()
+ await updateSettings({commerce:{taxRateId:'txr_exclusive'}})
+ const calls:string[]=[]
+ vi.stubGlobal('fetch',vi.fn(async(input:unknown)=>{
+  calls.push(new URL(String(input)).pathname)
+  return Response.json({id:'txr_exclusive',object:'tax_rate',active:true,inclusive:false,percentage:20})
+ }))
+ await expect(createCheckout(generated.previewToken)).rejects.toMatchObject({status:502,code:'STRIPE_TAX_RATE'})
+ expect(calls).toEqual(['/v1/tax_rates/txr_exclusive'])
+ expect((await checkoutDiagnostics()).test).toMatchObject({category:'tax_rate',message:expect.stringContaining('inclus')})
+ expect((await sql()`select status from website_orders`)[0]!.status).toBe('FAILED')
+})

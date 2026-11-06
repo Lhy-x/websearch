@@ -78,6 +78,9 @@ export function checkoutFailure(error: unknown) {
   } else if (parameter?.includes('tax_rates') || /no such tax rate|tax rate.*(?:invalid|inactive|mode)/i.test(text)) {
     category = 'tax_rate'; message = 'Le taux de TVA configuré est refusé par Stripe.'
     action = 'Dans Paiement → TVA, vérifiez que le taux txr_… existe et est actif dans le même compte et le même mode Stripe. Retirez-le uniquement si aucun taux ne doit s’appliquer.'
+  } else if (parameter?.startsWith('managed_payments') || /managed payments|product tax code|tax_code/.test(text)) {
+    category = 'managed_payments'; message = 'Stripe Managed Payments est activé sur ce compte et exige un code fiscal produit.'
+    action = 'L’application désactive Managed Payments pour chaque paiement. Si ce refus apparaît encore, désactivez Managed Payments par défaut dans les réglages Stripe du mode utilisé (Paramètres → Managed Payments), puis réessayez.'
   } else if (/business.{0,30}name|business_profile|business.{0,30}address/.test(text)) {
     category = 'business_profile'; message = 'Le profil professionnel Stripe doit être complété.'
     action = 'Dans le tableau de bord Stripe du mode utilisé, complétez le nom public et l’adresse de votre entreprise, puis les informations de facturation demandées par Stripe.'
@@ -93,13 +96,22 @@ export function checkoutFailure(error: unknown) {
 }
 
 const keyFor = (live: boolean) => `billing:checkout-diagnostic:${live ? 'live' : 'test'}`
-export async function recordCheckoutFailure(error: unknown, context: { orderId: string; live: boolean; operation: CheckoutDiagnostic['operation'] }) {
-  const { definitive, ...failure } = checkoutFailure(error)
+type CheckoutContext = { orderId: string; live: boolean; operation: CheckoutDiagnostic['operation'] }
+async function storeCheckoutFailure(failure: Omit<CheckoutDiagnostic, 'at' | 'operation'>, context: CheckoutContext) {
   const record = { ...failure, at: new Date().toISOString(), operation: context.operation, orderId: context.orderId }
   // Only sanitized Stripe fields are logged; unknown exceptions are not printed.
   console.error('[stripe checkout]', { mode: context.live ? 'live' : 'test', ...record })
   await sql()`insert into kv_store(key,value) values(${keyFor(context.live)},${sql().json(record)}) on conflict(key) do update set value=excluded.value,updated_at=now()`
-  return { definitive, error: new AppError(`${failure.message} Réessayez ou contactez le vendeur.${failure.requestId ? ' Référence : ' + failure.requestId + '.' : ''}`, 502, 'STRIPE_' + failure.category.toUpperCase()) }
+  return new AppError(`${failure.message} Réessayez ou contactez le vendeur.${failure.requestId ? ' Référence : ' + failure.requestId + '.' : ''}`, 502, 'STRIPE_' + failure.category.toUpperCase())
+}
+export async function recordCheckoutFailure(error: unknown, context: CheckoutContext) {
+  const { definitive, ...failure } = checkoutFailure(error)
+  return { definitive, error: await storeCheckoutFailure(failure, context) }
+}
+export type CheckoutProblem = { category: string; message: string; action: string }
+/** A configuration problem detected before Stripe is asked to create the session (always definitive). */
+export async function recordCheckoutProblem(problem: CheckoutProblem, context: CheckoutContext) {
+  return storeCheckoutFailure({ ...problem, detail: null, parameter: null, requestId: null }, context)
 }
 export async function clearCheckoutFailure(orderId: string, live: boolean, startedAt: string) {
   // A successful retry can use a new order after a definitive configuration refusal.

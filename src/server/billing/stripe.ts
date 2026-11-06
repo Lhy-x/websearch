@@ -46,3 +46,19 @@ function stripeFetch(input:string|URL|Request,init?:RequestInit){
  headers.delete('content-length')
  return globalThis.fetch(input,{...init,headers})
 }
+
+/**
+ * Checkout charges exactly the configured price only with an active, price-inclusive tax rate:
+ * an exclusive rate is added on top, so the webhook would reject the amount and never mark the order paid.
+ */
+export async function taxRateProblem(stripe:Stripe,id:string|undefined) {
+ if(!id)return null
+ let rate:Stripe.TaxRate
+ try{rate=await stripe.taxRates.retrieve(id)}catch(error){
+  if(!(error instanceof Stripe.errors.StripeInvalidRequestError))throw error
+  return {category:'tax_rate',message:'Le taux de TVA configuré est introuvable dans ce compte Stripe.',action:'Dans Paiement → TVA, collez l’identifiant txr_… d’un taux du même compte et du même mode (test ou réel), ou laissez le champ vide si aucune TVA ne s’applique.'}
+ }
+ if(!rate.active)return {category:'tax_rate',message:'Le taux de TVA configuré est archivé dans Stripe.',action:'Dans Stripe, utilisez un taux actif et collez son identifiant txr_… dans Paiement → TVA.'}
+ if(!rate.inclusive)return {category:'tax_rate',message:'Le taux de TVA configuré s’ajoute au prix au lieu d’y être inclus.',action:'Dans Stripe, créez un taux « inclus dans le prix » (les taux ne sont pas modifiables), puis collez son identifiant txr_… dans Paiement → TVA. Sinon le client paierait plus que le prix affiché et la commande ne serait pas confirmée.'}
+ return null
+}

@@ -39,12 +39,13 @@ async function paid(o:Awaited<ReturnType<typeof order>>){
 
 it('preserves a frozen, idempotent checkout across a timeout and a seller price change; grants nothing beforehand',async()=>{
  const o=await order();mocks.create.mockRejectedValueOnce(new Error('timeout'))
- await expect(createHostingCheckout(o.token)).rejects.toThrow('timeout')
+ await expect(createHostingCheckout(o.token)).rejects.toMatchObject({status:502})
  await updateSettings({hosting:{monthlyPriceCents:4900}})
  await createHostingCheckout(o.token)
  const calls=mocks.create.mock.calls
  expect(calls[0]![0]).toEqual(calls[1]![0]);expect(calls[0]![1]).toEqual(calls[1]![1])
  expect(calls[1]![0].line_items[0].price_data.unit_amount).toBe(2900)
+ expect(calls[1]![0].managed_payments).toEqual({enabled:false})
  expect((await customerDashboard(o.token)).hosting.active).toBe(false)
  await expect(requestPublication(o.token)).rejects.toThrow('abonnement confirmé')
  await createHostingCheckout(o.token);expect(mocks.create).toHaveBeenCalledTimes(2)

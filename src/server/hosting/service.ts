@@ -4,7 +4,8 @@ import { sql } from '../core/db'
 import { AppError } from '../core/errors'
 import { randomToken } from '../core/crypto'
 import { getSettings,getRuntimeConfig } from '../core/settings'
-import { publicBase,stripeClient,stripeUrl } from '../billing/stripe'
+import { publicBase,stripeClient,stripeUrl,taxRateProblem } from '../billing/stripe'
+import { recordCheckoutFailure,recordCheckoutProblem } from '../billing/checkout-errors'
 import { websiteVersionSchema } from '@/lib/site/bespoke-schema'
 import { enqueueJob } from '../jobs/queue'
 import { publishO2Site,suspendO2Site,normalizeCustomerDomain,domainDnsStatus,mapO2Domain,domainHttpsReady } from './o2switch'
@@ -47,18 +48,31 @@ export async function createHostingCheckout(token:string){
   const resubscribe=!!row!.stripe_subscription_id&&['canceled','incomplete_expired'].includes(row!.subscription_status)
   if(row!.stripe_subscription_id&&!resubscribe)throw new AppError('Un abonnement existe déjà. Utilisez Gérer mon abonnement.',409)
   if(row!.checkout_session_id&&!resubscribe){const session=await stripe.checkout.sessions.retrieve(row!.checkout_session_id);if(session.status==='open'&&stripeUrl(session.url))return {url:stripeUrl(session.url)!};if(session.status==='complete')throw new AppError('Abonnement en cours de confirmation. Patientez quelques instants.',409)}
-  const fresh=!!row!.checkout_session_id||resubscribe
+  // Parameters saved before Managed Payments was disabled can never succeed: start a new attempt (new idempotency key).
+  const stale=!!row!.checkout_params&&!row!.checkout_params.managed_payments
+  const fresh=!!row!.checkout_session_id||resubscribe||stale
   const attempt=fresh?randomUUID():row!.checkout_attempt
   const metadata={hosting_order_id:order.id,hosting_attempt:attempt}
   const customer=row!.stripe_customer_id||order.stripe_customer_id
-  const proposed:Stripe.Checkout.SessionCreateParams={mode:'subscription',client_reference_id:order.id,metadata,subscription_data:{metadata},billing_address_collection:'required',tax_id_collection:{enabled:true},...(customer?{customer}:order.buyer_email?{customer_email:order.buyer_email}:{}),line_items:[{quantity:1,...(settings.commerce.taxRateId?{tax_rates:[settings.commerce.taxRateId]}:{}),price_data:{tax_behavior:'inclusive',currency:settings.hosting.currency,unit_amount:settings.hosting.monthlyPriceCents!,recurring:{interval:'month'},product_data:{name:settings.hosting.title,description:order.business_name}}}],success_url:`${base}/purchase/${token}?hosting=return`,cancel_url:`${base}/purchase/${token}#hosting`}
+  const proposed:Stripe.Checkout.SessionCreateParams={mode:'subscription',managed_payments:{enabled:false},client_reference_id:order.id,metadata,subscription_data:{metadata},billing_address_collection:'required',tax_id_collection:{enabled:true},...(customer?{customer}:order.buyer_email?{customer_email:order.buyer_email}:{}),line_items:[{quantity:1,...(settings.commerce.taxRateId?{tax_rates:[settings.commerce.taxRateId]}:{}),price_data:{tax_behavior:'inclusive',currency:settings.hosting.currency,unit_amount:settings.hosting.monthlyPriceCents!,recurring:{interval:'month'},product_data:{name:settings.hosting.title,description:order.business_name}}}],success_url:`${base}/purchase/${token}?hosting=return`,cancel_url:`${base}/purchase/${token}#hosting`}
   const params=row!.checkout_params&&!fresh?row!.checkout_params:proposed
   const price=params.line_items![0]!.price_data!
   await tx`update website_hosting set checkout_attempt=${attempt},checkout_session_id=null,checkout_url=null,checkout_params=${tx.json(params as never)},monthly_price_cents=${Number(price.unit_amount)},currency=${String(price.currency)},publish_requested=true,stripe_subscription_id=null,subscription_status='checkout_pending' where order_id=${order.id}`
   return {params,attempt}
  })
  if('url' in intent)return {url:intent.url}
- const session=await stripe.checkout.sessions.create(intent.params,{idempotencyKey:`hosting-checkout:${order.id}:${intent.attempt}`})
+ const context={orderId:order.id,live:order.livemode,operation:'create' as const}
+ // After a definitive refusal, drop the frozen attempt so the next click uses corrected settings and a new idempotency key.
+ const abandon=()=>sql()`update website_hosting set checkout_attempt=${randomUUID()},checkout_params=null where order_id=${order.id} and checkout_attempt=${intent.attempt} and checkout_session_id is null`
+ let session:Stripe.Checkout.Session
+ try{
+  const problem=await taxRateProblem(stripe,intent.params.line_items?.[0]?.tax_rates?.[0])
+  if(problem){await abandon();throw await recordCheckoutProblem(problem,context)}
+  session=await stripe.checkout.sessions.create(intent.params,{idempotencyKey:`hosting-checkout:${order.id}:${intent.attempt}`})
+ }catch(error){
+  if(error instanceof AppError)throw error
+  const failure=await recordCheckoutFailure(error,context);if(failure.definitive)await abandon();throw failure.error
+ }
  const url=stripeUrl(session.url);if(!url)throw new AppError('Stripe n’a pas renvoyé de lien d’abonnement.',502)
  await sql()`update website_hosting set checkout_session_id=${session.id},checkout_url=${url} where order_id=${order.id} and checkout_attempt=${intent.attempt}`
  return {url}

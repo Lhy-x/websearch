@@ -40,5 +40,10 @@ test('a Stripe refusal stays on the order page, exposes a private redacted diagn
   const orders=await db`select status from website_orders where business_id=${businessId} order by created_at`
   expect(orders.map(row=>row.status)).toEqual(['FAILED','OPEN'])
   expect((await(await page.request.get('/api/billing')).json()).diagnostics.test).toBeNull()
- }finally{if(businessId)await db`delete from businesses where id=${businessId}`;await db.end()}
+ }finally{
+  if(businessId)await db`delete from businesses where id=${businessId}`
+  // Later specs read the demo address: do not leave this spec's preview base behind.
+  await db`update admin_settings set data=jsonb_set(data,'{sites,previewBaseUrl}','""'::jsonb,true) where data ? 'sites'`
+  await db.end()
+ }
 })
